@@ -3,9 +3,7 @@
 function underReviewReadyToCollate(record) {
   const votes = record.votes || [];
   const assigned = record.assignedMembers || [];
-  if (votes.length === 0) return false;
-  const unanimousApproval = assigned.length > 0 && assigned.every((id) => votes.some((v) => v.voterId === id && v.decision === 'Approve'));
-  return votes.some((v) => v.decision === 'Return') || unanimousApproval;
+  return assigned.length > 0 && assigned.every((id) => votes.some((v) => v.voterId === id));
 }
 
 function needsActionFromCurrentRole(record, role) {

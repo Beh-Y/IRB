@@ -59,20 +59,36 @@ class IrpfFormController {
     return isIrbMember(this.currentRole) && !this.isAssignedMember() && this.record.status === 'under_review';
   }
 
-  isPendingSecretariatCollation() {
-    return (
-      isSecretariat(this.currentRole) &&
-      this.record.status === 'under_review' &&
-      this.record.routedTo === this.currentRole
-    );
-  }
-
   getVotes() {
     return this.record.votes || [];
   }
 
   hasVoted(memberId) {
     return this.getVotes().some((v) => v.voterId === memberId);
+  }
+
+  allAssignedMembersVoted() {
+    const assigned = this.getAssignedMembers();
+    return assigned.length > 0 && assigned.every((memberId) => this.hasVoted(memberId));
+  }
+
+  /* True once every assigned IRB Member has sent their review back to the Secretariat. */
+  isPendingSecretariatCollation() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'under_review' &&
+      this.record.routedTo === this.currentRole &&
+      this.allAssignedMembersVoted()
+    );
+  }
+
+  isAwaitingMemberReview() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'under_review' &&
+      this.record.routedTo === this.currentRole &&
+      !this.allAssignedMembersVoted()
+    );
   }
 
   voteTally() {
@@ -83,19 +99,6 @@ class IrpfFormController {
       approveCount: votes.filter((v) => v.decision === 'Approve').length,
       returnCount: votes.filter((v) => v.decision === 'Return').length,
     };
-  }
-
-  canFinalizeApproval() {
-    const assigned = this.getAssignedMembers();
-    if (assigned.length === 0) return false;
-    return assigned.every((memberId) => {
-      const vote = this.getVotes().find((v) => v.voterId === memberId);
-      return vote && vote.decision === 'Approve';
-    });
-  }
-
-  canSendForRevisionFromUnderReview() {
-    return this.getVotes().some((v) => v.decision === 'Return');
   }
 
   castVote(decision, comment) {
@@ -507,55 +510,36 @@ class IrpfFormController {
     return { ok: true };
   }
 
-  routeToCreateIpaf(comment, memberIds) {
+  /* Secretariat's first (and only) action at Pending Review: send to the IRB Member panel. */
+  routeToMembersForReview(comment, memberIds) {
     const assigned = memberIds || [];
     if (assigned.length === 0) {
       return { ok: false, error: 'Select at least one IRB Member to route this IRPF to.' };
     }
     this.record.status = 'under_review';
-    this.record.ipafRequired = true;
     this.record.assignedMembers = assigned;
     this.record.votes = [];
     const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
     saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for review: ${memberLabels}.`,
+    });
+    return { ok: true };
+  }
+
+  /* One of the Secretariat's three final decisions, available once all assigned members have voted. */
+  decideToCreateIpaf(comment) {
+    this.record.status = 'approved';
+    this.record.reviewOutcome = 'full_review';
+    this.record.ipafRequired = true;
+    const tally = this.voteTally();
+    saveSubmission(this.record, {
       action: 'to_create_ipaf',
       actor: this.currentRole,
       status: this.record.status,
-      note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for full review: ${memberLabels}.`,
-    });
-    return { ok: true };
-  }
-
-  finalizeApprovalFromUnderReview(comment) {
-    if (!this.canFinalizeApproval()) {
-      return { ok: false, error: 'Cannot finalize: at least one IRB Member has not approved.' };
-    }
-    this.record.status = 'approved';
-    this.record.reviewOutcome = 'full_review';
-    const tally = this.voteTally();
-    saveSubmission(this.record, {
-      action: 'under_review_approved',
-      actor: this.currentRole,
-      status: this.record.status,
-      note: comment || `Unanimous approval collated from ${tally.total} IRB Member(s).`,
-    });
-    return { ok: true };
-  }
-
-  sendForRevisionFromUnderReview(comment) {
-    if (!this.canSendForRevisionFromUnderReview()) {
-      return { ok: false, error: 'Cannot send for revision: no IRB Member has returned this submission.' };
-    }
-    this.record.status = 'for_revision';
-    const returnComments = this.getVotes()
-      .filter((v) => v.decision === 'Return')
-      .map((v) => `${v.voterName}: ${v.comment}`)
-      .join(' | ');
-    saveSubmission(this.record, {
-      action: 'under_review_returned',
-      actor: this.currentRole,
-      status: this.record.status,
-      note: comment && comment.trim() ? comment.trim() : returnComments,
+      note: comment || `Confirmed: IPAF required, following review by ${tally.assignedTotal} IRB Member(s).`,
     });
     return { ok: true };
   }

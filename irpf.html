@@ -27,19 +27,18 @@
     <div id="triage-panel" class="triage-panel" hidden>
       <h2>Secretariat Review</h2>
       <p class="triage-hint">
-        Choose one outcome. A comment is required when returning the IRPF for amendments so the PI knows what to fix.
+        Route this IRPF to the IRB Member panel for review. Once they send their review back, you'll be able to
+        record the final outcome.
       </p>
-      <label for="triage-comment">Comment</label>
+      <label for="triage-comment">Comment (optional)</label>
       <textarea id="triage-comment" rows="3"></textarea>
 
-      <label>Route to IRB Members <span class="triage-hint-inline">(required for "To Create IPAF")</span></label>
+      <label>Route to IRB Members</label>
       <div id="triage-member-checkboxes" class="checkbox-group"></div>
 
       <div id="triage-error" class="field-error"></div>
       <div class="triage-actions">
-        <button id="btn-approve-exemption" type="button" class="btn btn-primary">Approved for Exemption</button>
-        <button id="btn-return-amendments" type="button" class="btn btn-secondary">Returned for Amendments</button>
-        <button id="btn-create-ipaf" type="button" class="btn btn-secondary">To Create IPAF</button>
+        <button id="btn-route-to-members" type="button" class="btn btn-primary">Route to IRB Members for Review</button>
       </div>
     </div>
 
@@ -65,14 +64,15 @@
     </div>
 
     <div id="collate-panel" class="triage-panel" hidden>
-      <h2>Collate IRB Member Votes</h2>
+      <h2>Secretariat Decision</h2>
       <p id="collate-hint" class="triage-hint"></p>
-      <label for="collate-comment">Comment (optional)</label>
-      <textarea id="collate-comment" rows="2"></textarea>
+      <label for="collate-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
+      <textarea id="collate-comment" rows="3"></textarea>
       <div id="collate-error" class="field-error"></div>
       <div class="triage-actions">
-        <button id="btn-finalize-approve" type="button" class="btn btn-primary">Finalize Approval</button>
-        <button id="btn-send-for-revision" type="button" class="btn btn-secondary">Send Back for Revision</button>
+        <button id="btn-approve-exemption" type="button" class="btn btn-primary">Approved for Exemption</button>
+        <button id="btn-return-amendments" type="button" class="btn btn-secondary">Returned for Amendments</button>
+        <button id="btn-create-ipaf" type="button" class="btn btn-secondary">To Create IPAF</button>
       </div>
     </div>
 

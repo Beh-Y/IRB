@@ -146,23 +146,10 @@ function describeApprovedOutcome(record) {
 function renderCollateHint(controller) {
   const hint = document.getElementById('collate-hint');
   const tally = controller.voteTally();
-  const pendingLabels = controller
-    .getAssignedMembers()
-    .filter((id) => !controller.hasVoted(id))
-    .map((id) => getRoleLabel(id));
-
-  if (tally.total === 0) {
-    hint.textContent = `No votes have been cast yet. Waiting on ${pendingLabels.join(', ')}.`;
-  } else if (controller.canSendForRevisionFromUnderReview()) {
-    hint.textContent = `${tally.returnCount} of ${tally.assignedTotal} assigned member(s) returned this submission. You may send it back for revision.`;
-  } else if (controller.canFinalizeApproval()) {
-    hint.textContent = `All ${tally.assignedTotal} assigned member(s) approved. You may finalize approval.`;
-  } else {
-    hint.textContent = `${tally.approveCount} of ${tally.assignedTotal} assigned member(s) approved so far. Waiting on ${pendingLabels.join(', ')}.`;
-  }
-
-  document.getElementById('btn-finalize-approve').disabled = !controller.canFinalizeApproval();
-  document.getElementById('btn-send-for-revision').disabled = !controller.canSendForRevisionFromUnderReview();
+  hint.textContent =
+    `All ${tally.assignedTotal} assigned member(s) have reviewed this IRPF: ` +
+    `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
+    'Choose the final outcome below.';
 }
 
 function initIrpfPage() {
@@ -185,9 +172,7 @@ function initIrpfPage() {
   const triagePanel = document.getElementById('triage-panel');
   const triageComment = document.getElementById('triage-comment');
   const triageError = document.getElementById('triage-error');
-  const approveExemptionBtn = document.getElementById('btn-approve-exemption');
-  const returnAmendmentsBtn = document.getElementById('btn-return-amendments');
-  const createIpafBtn = document.getElementById('btn-create-ipaf');
+  const routeToMembersBtn = document.getElementById('btn-route-to-members');
   const voteFormPanel = document.getElementById('vote-form-panel');
   const voterIdentityEl = document.getElementById('voter-identity');
   const voteCommentInput = document.getElementById('vote-comment');
@@ -196,8 +181,9 @@ function initIrpfPage() {
   const collatePanel = document.getElementById('collate-panel');
   const collateComment = document.getElementById('collate-comment');
   const collateError = document.getElementById('collate-error');
-  const finalizeApproveBtn = document.getElementById('btn-finalize-approve');
-  const sendForRevisionBtn = document.getElementById('btn-send-for-revision');
+  const approveExemptionBtn = document.getElementById('btn-approve-exemption');
+  const returnAmendmentsBtn = document.getElementById('btn-return-amendments');
+  const createIpafBtn = document.getElementById('btn-create-ipaf');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
@@ -223,6 +209,13 @@ function initIrpfPage() {
   } else if (controller.isPendingSecretariatCollation()) {
     collatePanel.hidden = false;
     renderCollateHint(controller);
+  } else if (controller.isAwaitingMemberReview()) {
+    const pending = controller
+      .getAssignedMembers()
+      .filter((id) => !controller.hasVoted(id))
+      .map((id) => getRoleLabel(id))
+      .join(', ');
+    showBanner(`Waiting on review from: ${pending}.`, 'info');
   } else if (controller.isUnderReviewVotingOpenToMember()) {
     voteFormPanel.hidden = false;
     voterIdentityEl.textContent = getRoleLabel(role);
@@ -236,7 +229,7 @@ function initIrpfPage() {
   } else if (record.status === 'for_revision') {
     showBanner('Returned for amendments. Awaiting the PI to address the comments and resubmit.', 'info');
   } else if (record.status === 'under_review') {
-    showBanner('Routed to the IRB Member panel for full review. Awaiting unanimous approval.', 'info');
+    showBanner('Routed to the IRB Member panel for review. Awaiting their feedback.', 'info');
   } else if (record.status === 'approved') {
     showBanner(describeApprovedOutcome(record), 'success');
   } else if (record.status === 'draft') {
@@ -279,9 +272,9 @@ function initIrpfPage() {
     approveBtn.hidden = true;
   });
 
-  function handleTriageDecision(action) {
+  routeToMembersBtn.addEventListener('click', () => {
     const comment = triageComment.value;
-    const result = action(comment);
+    const result = controller.routeToMembersForReview(comment, getCheckedMemberIds());
     if (!result.ok) {
       triageError.textContent = result.error;
       return;
@@ -290,22 +283,9 @@ function initIrpfPage() {
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
     renderActivityLog(record);
     triagePanel.hidden = true;
-
-    if (record.status === 'approved') {
-      showBanner(describeApprovedOutcome(record), 'success');
-    } else if (record.status === 'for_revision') {
-      showBanner('Returned for amendments. The PI has been notified.', 'success');
-    } else if (record.status === 'under_review') {
-      const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
-      showBanner(`Routed to ${names} for full review.`, 'success');
-    }
-  }
-
-  approveExemptionBtn.addEventListener('click', () => handleTriageDecision((c) => controller.approveForExemption(c)));
-  returnAmendmentsBtn.addEventListener('click', () => handleTriageDecision((c) => controller.returnForAmendments(c)));
-  createIpafBtn.addEventListener('click', () =>
-    handleTriageDecision((c) => controller.routeToCreateIpaf(c, getCheckedMemberIds()))
-  );
+    const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
+    showBanner(`Routed to ${names} for review.`, 'success');
+  });
 
   castVoteBtn.addEventListener('click', () => {
     const decisionEl = voteFormPanel.querySelector('input[name="voteDecision"]:checked');
@@ -342,8 +322,9 @@ function initIrpfPage() {
     }
   }
 
-  finalizeApproveBtn.addEventListener('click', () => handleCollateDecision((c) => controller.finalizeApprovalFromUnderReview(c)));
-  sendForRevisionBtn.addEventListener('click', () => handleCollateDecision((c) => controller.sendForRevisionFromUnderReview(c)));
+  approveExemptionBtn.addEventListener('click', () => handleCollateDecision((c) => controller.approveForExemption(c)));
+  returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
+  createIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.decideToCreateIpaf(c)));
 
   closeBtn.addEventListener('click', () => {
     window.location.href = 'index.html';

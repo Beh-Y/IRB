@@ -19,6 +19,26 @@
 
     <div id="status-banner" class="status-banner" hidden></div>
 
+    <div id="activity-log" class="activity-log" hidden>
+      <h2>Activity</h2>
+      <ul id="activity-log-list"></ul>
+    </div>
+
+    <div id="triage-panel" class="triage-panel" hidden>
+      <h2>Secretariat Review</h2>
+      <p class="triage-hint">
+        Choose one outcome. A comment is required when returning the IRPF for amendments so the PI knows what to fix.
+      </p>
+      <label for="triage-comment">Comment</label>
+      <textarea id="triage-comment" rows="3"></textarea>
+      <div id="triage-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-approve-exemption" type="button" class="btn btn-primary">Approved for Exemption</button>
+        <button id="btn-return-amendments" type="button" class="btn btn-secondary">Returned for Amendments</button>
+        <button id="btn-create-ipaf" type="button" class="btn btn-secondary">To Create IPAF</button>
+      </div>
+    </div>
+
     <div id="irpf-form-container" class="form-container"></div>
 
     <div class="form-actions">

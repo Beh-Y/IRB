@@ -125,6 +125,85 @@ body {
   color: var(--color-text-muted);
 }
 
+.activity-log {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.activity-log h2 {
+  font-size: 0.95rem;
+  margin: 0 0 0.6rem;
+  color: var(--color-text-muted);
+}
+
+.activity-log ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activity-log li {
+  font-size: 0.85rem;
+  border-left: 3px solid var(--color-border);
+  padding: 0.15rem 0 0.15rem 0.7rem;
+}
+
+.activity-log .activity-meta {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.activity-log .activity-note {
+  margin-top: 0.15rem;
+}
+
+.triage-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.triage-panel h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.4rem;
+  color: var(--color-primary);
+}
+
+.triage-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.triage-panel label {
+  font-size: 0.85rem;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.triage-panel textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.triage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
 .form-container {
   background: var(--color-surface);
   border: 1px solid var(--color-border);

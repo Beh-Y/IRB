@@ -35,6 +35,14 @@ class IrpfFormController {
     return this.currentRole === 'sd-director' && this.record.status === 'pending_director_approval';
   }
 
+  isPendingSecretariatTriage() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'pending_review' &&
+      this.record.routedTo === this.currentRole
+    );
+  }
+
   getData() {
     return this.record.data;
   }
@@ -340,13 +348,30 @@ class IrpfFormController {
     const piDateEl = this.fieldEls.piSubmissionDate && this.fieldEls.piSubmissionDate.input;
     if (piDateEl) piDateEl.textContent = this.record.data.piSubmissionDate;
 
-    this.record.status = 'pending_director_approval';
-    saveSubmission(this.record, {
-      action: 'submit',
-      actor: this.currentRole,
-      status: this.record.status,
-      note: 'Routed to S/D Director for approval.',
-    });
+    const wasForRevision = this.record.status === 'for_revision';
+
+    if (wasForRevision) {
+      // Resubmission after Secretariat's "Returned for Amendments" skips the
+      // Director gate and routes straight back to the Secretariat, per spec.
+      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+      this.record.routedTo = secretariat;
+      this.record.status = 'pending_review';
+      saveSubmission(this.record, {
+        action: 'resubmit',
+        actor: this.currentRole,
+        status: this.record.status,
+        note: `Resubmitted and routed to ${getRoleLabel(secretariat)}.`,
+      });
+    } else {
+      this.record.status = 'pending_director_approval';
+      saveSubmission(this.record, {
+        action: 'submit',
+        actor: this.currentRole,
+        status: this.record.status,
+        note: 'Routed to S/D Director for approval.',
+      });
+    }
+
     return { ok: true };
   }
 
@@ -363,6 +388,45 @@ class IrpfFormController {
       actor: this.currentRole,
       status: this.record.status,
       note: `Auto-routed to ${getRoleLabel(secretariat)} based on Category of Research.`,
+    });
+    return { ok: true };
+  }
+
+  approveForExemption(comment) {
+    this.record.status = 'approved';
+    this.record.reviewOutcome = 'exemption';
+    this.record.ipafRequired = false;
+    saveSubmission(this.record, {
+      action: 'approved_for_exemption',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment || 'Approved for exemption. No IPAF required.',
+    });
+    return { ok: true };
+  }
+
+  returnForAmendments(comment) {
+    if (!comment || !comment.trim()) {
+      return { ok: false, error: 'A comment is required so the PI knows what to amend.' };
+    }
+    this.record.status = 'for_revision';
+    saveSubmission(this.record, {
+      action: 'returned_for_amendments',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment.trim(),
+    });
+    return { ok: true };
+  }
+
+  routeToCreateIpaf(comment) {
+    this.record.status = 'under_review';
+    this.record.ipafRequired = true;
+    saveSubmission(this.record, {
+      action: 'to_create_ipaf',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment || 'Routed to the IRB Member panel for full review.',
     });
     return { ok: true };
   }

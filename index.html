@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SP IRB Process Management</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <h1>IRPF Submissions</h1>
+      <button id="btn-new-irpf" type="button" class="btn btn-primary">New IRPF</button>
+    </div>
+
+    <table class="submissions-table">
+      <thead>
+        <tr>
+          <th>Reference No.</th>
+          <th>Project Title</th>
+          <th>Category</th>
+          <th>Status</th>
+          <th>Last Updated</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="submissions-body"></tbody>
+    </table>
+  </main>
+
+  <script src="js/roles.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/status.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

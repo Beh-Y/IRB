@@ -427,7 +427,7 @@ class IrpfFormController {
     return { ok: true };
   }
 
-  submit() {
+  submit(comment) {
     const errors = this.validateAll();
     this.renderErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -447,11 +447,12 @@ class IrpfFormController {
       const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
       this.record.routedTo = secretariat;
       this.record.status = 'pending_review';
+      const routedNote = `Resubmitted and routed to ${getRoleLabel(secretariat)}.`;
       saveSubmission(this.record, {
         action: 'resubmit',
         actor: this.currentRole,
         status: this.record.status,
-        note: `Resubmitted and routed to ${getRoleLabel(secretariat)}.`,
+        note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
       });
     } else {
       this.record.status = 'pending_director_approval';

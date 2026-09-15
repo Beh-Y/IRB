@@ -184,6 +184,8 @@ function initIrpfPage() {
   const approveExemptionBtn = document.getElementById('btn-approve-exemption');
   const returnAmendmentsBtn = document.getElementById('btn-return-amendments');
   const createIpafBtn = document.getElementById('btn-create-ipaf');
+  const piCommentPanel = document.getElementById('pi-comment-panel');
+  const piCommentInput = document.getElementById('pi-comment');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
@@ -191,12 +193,14 @@ function initIrpfPage() {
   triagePanel.hidden = true;
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
+  piCommentPanel.hidden = true;
 
   if (controller.isEditableByPi()) {
     saveBtn.hidden = false;
     submitBtn.hidden = false;
     if (record.status === 'for_revision') {
       showBanner('This IRPF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
+      piCommentPanel.hidden = false;
     }
   } else if (controller.isPendingThisDirectorApproval()) {
     approveBtn.hidden = false;
@@ -246,7 +250,7 @@ function initIrpfPage() {
 
   submitBtn.addEventListener('click', () => {
     const wasForRevision = record.status === 'for_revision';
-    const result = controller.submit();
+    const result = controller.submit(wasForRevision ? piCommentInput.value : undefined);
     if (!result.ok) {
       showBanner('Please resolve the highlighted fields before submitting.', 'error');
       return;
@@ -261,6 +265,7 @@ function initIrpfPage() {
     renderActivityLog(record);
     saveBtn.hidden = true;
     submitBtn.hidden = true;
+    piCommentPanel.hidden = true;
     history.replaceState(null, '', `irpf.html?id=${record.id}`);
   });
 

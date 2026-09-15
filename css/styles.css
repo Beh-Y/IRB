@@ -163,6 +163,35 @@ body {
   margin-top: 0.15rem;
 }
 
+.voting-tally {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.voting-tally .tally-chip {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  background: var(--color-muted-bg);
+  color: var(--color-text-muted);
+}
+
+.voting-tally .tally-chip--approve {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.voting-tally .tally-chip--return {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.vote-decision-group {
+  margin: 0.4rem 0 0.9rem;
+}
+
 .triage-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-primary);

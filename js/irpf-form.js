@@ -43,6 +43,69 @@ class IrpfFormController {
     );
   }
 
+  isUnderReviewVotingOpenToMember() {
+    return this.currentRole === 'irb-member' && this.record.status === 'under_review';
+  }
+
+  isPendingSecretariatCollation() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'under_review' &&
+      this.record.routedTo === this.currentRole
+    );
+  }
+
+  getVotes() {
+    return this.record.votes || [];
+  }
+
+  voteTally() {
+    const votes = this.getVotes();
+    return {
+      total: votes.length,
+      approveCount: votes.filter((v) => v.decision === 'Approve').length,
+      returnCount: votes.filter((v) => v.decision === 'Return').length,
+    };
+  }
+
+  canFinalizeApproval() {
+    const votes = this.getVotes();
+    return votes.length > 0 && votes.every((v) => v.decision === 'Approve');
+  }
+
+  canSendForRevisionFromUnderReview() {
+    return this.getVotes().some((v) => v.decision === 'Return');
+  }
+
+  castVote(voterName, decision, comment) {
+    const name = (voterName || '').trim();
+    if (!name) {
+      return { ok: false, error: 'Enter your name to vote.' };
+    }
+    if (!decision) {
+      return { ok: false, error: 'Select Approve or Return.' };
+    }
+    if (decision === 'Return' && !(comment || '').trim()) {
+      return { ok: false, error: 'A comment is required when returning for revision.' };
+    }
+    const alreadyVoted = this.getVotes().some((v) => v.voterName.trim().toLowerCase() === name.toLowerCase());
+    if (alreadyVoted) {
+      return { ok: false, error: `${name} has already voted on this IRPF.` };
+    }
+
+    this.record.votes = this.getVotes();
+    const vote = { voterName: name, decision, comment: (comment || '').trim(), timestamp: new Date().toISOString() };
+    this.record.votes.push(vote);
+
+    saveSubmission(this.record, {
+      action: 'member_vote',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: `${name}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`,
+    });
+    return { ok: true };
+  }
+
   getData() {
     return this.record.data;
   }
@@ -427,6 +490,40 @@ class IrpfFormController {
       actor: this.currentRole,
       status: this.record.status,
       note: comment || 'Routed to the IRB Member panel for full review.',
+    });
+    return { ok: true };
+  }
+
+  finalizeApprovalFromUnderReview(comment) {
+    if (!this.canFinalizeApproval()) {
+      return { ok: false, error: 'Cannot finalize: at least one IRB Member has not approved.' };
+    }
+    this.record.status = 'approved';
+    this.record.reviewOutcome = 'full_review';
+    const tally = this.voteTally();
+    saveSubmission(this.record, {
+      action: 'under_review_approved',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment || `Unanimous approval collated from ${tally.total} IRB Member(s).`,
+    });
+    return { ok: true };
+  }
+
+  sendForRevisionFromUnderReview(comment) {
+    if (!this.canSendForRevisionFromUnderReview()) {
+      return { ok: false, error: 'Cannot send for revision: no IRB Member has returned this submission.' };
+    }
+    this.record.status = 'for_revision';
+    const returnComments = this.getVotes()
+      .filter((v) => v.decision === 'Return')
+      .map((v) => `${v.voterName}: ${v.comment}`)
+      .join(' | ');
+    saveSubmission(this.record, {
+      action: 'under_review_returned',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment && comment.trim() ? comment.trim() : returnComments,
     });
     return { ok: true };
   }

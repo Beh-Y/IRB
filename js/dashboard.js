@@ -1,9 +1,19 @@
 /* Renders the IRPF submissions list on index.html, scoped to the current preview role. */
 
+function underReviewReadyToCollate(record) {
+  const votes = record.votes || [];
+  if (votes.length === 0) return false;
+  return votes.some((v) => v.decision === 'Return') || votes.every((v) => v.decision === 'Approve');
+}
+
 function needsActionFromCurrentRole(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
-  if (role === 'irb-admin-edu') return record.status === 'pending_review' && record.routedTo === 'irb-admin-edu';
-  if (role === 'irb-admin-tie') return record.status === 'pending_review' && record.routedTo === 'irb-admin-tie';
+  if (role === 'irb-admin-edu' || role === 'irb-admin-tie') {
+    if (record.status === 'pending_review') return record.routedTo === role;
+    if (record.status === 'under_review') return record.routedTo === role && underReviewReadyToCollate(record);
+    return false;
+  }
+  if (role === 'irb-member') return record.status === 'under_review';
   if (role === 'pi') return record.status === 'for_revision';
   return false;
 }

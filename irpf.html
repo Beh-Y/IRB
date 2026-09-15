@@ -39,6 +39,40 @@
       </div>
     </div>
 
+    <div id="voting-summary" class="activity-log" hidden>
+      <h2>IRB Member Panel</h2>
+      <div id="voting-tally" class="voting-tally"></div>
+      <ul id="votes-list"></ul>
+    </div>
+
+    <div id="vote-form-panel" class="triage-panel" hidden>
+      <h2>Cast Your Vote</h2>
+      <label for="voter-name">Your Name</label>
+      <input id="voter-name" type="text" />
+      <div class="radio-group vote-decision-group">
+        <label class="radio-option"><input type="radio" name="voteDecision" value="Approve" /> Approve</label>
+        <label class="radio-option"><input type="radio" name="voteDecision" value="Return" /> Return for Revision</label>
+      </div>
+      <label for="vote-comment">Comment</label>
+      <textarea id="vote-comment" rows="3"></textarea>
+      <div id="vote-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-cast-vote" type="button" class="btn btn-primary">Submit Vote</button>
+      </div>
+    </div>
+
+    <div id="collate-panel" class="triage-panel" hidden>
+      <h2>Collate IRB Member Votes</h2>
+      <p id="collate-hint" class="triage-hint"></p>
+      <label for="collate-comment">Comment (optional)</label>
+      <textarea id="collate-comment" rows="2"></textarea>
+      <div id="collate-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-finalize-approve" type="button" class="btn btn-primary">Finalize Approval</button>
+        <button id="btn-send-for-revision" type="button" class="btn btn-secondary">Send Back for Revision</button>
+      </div>
+    </div>
+
     <div id="irpf-form-container" class="form-container"></div>
 
     <div class="form-actions">

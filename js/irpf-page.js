@@ -18,12 +18,32 @@ function loadOrCreateRecord() {
     data: {},
     history: [],
     votes: [],
+    assignedMembers: [],
     createdAt: null,
     updatedAt: null,
     routedTo: null,
     reviewOutcome: null,
     ipafRequired: null,
   };
+}
+
+function renderTriageMemberCheckboxes(selected) {
+  const container = document.getElementById('triage-member-checkboxes');
+  container.innerHTML = '';
+  IRB_MEMBER_IDS.forEach((id) => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = id;
+    checkbox.checked = (selected || []).includes(id);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(getRoleLabel(id)));
+    container.appendChild(label);
+  });
+}
+
+function getCheckedMemberIds() {
+  return Array.from(document.querySelectorAll('#triage-member-checkboxes input:checked')).map((el) => el.value);
 }
 
 function showBanner(message, type) {
@@ -65,15 +85,14 @@ function renderActivityLog(record) {
 }
 
 function renderVotingSummary(controller) {
-  const record = controller.record;
   const container = document.getElementById('voting-summary');
   const list = document.getElementById('votes-list');
   const tallyEl = document.getElementById('voting-tally');
   list.innerHTML = '';
   tallyEl.innerHTML = '';
 
-  const votes = controller.getVotes();
-  if (votes.length === 0) {
+  const assigned = controller.getAssignedMembers();
+  if (assigned.length === 0) {
     container.hidden = true;
     return;
   }
@@ -81,7 +100,7 @@ function renderVotingSummary(controller) {
 
   const tally = controller.voteTally();
   const chips = [
-    { text: `${tally.total} vote${tally.total === 1 ? '' : 's'} cast`, cls: '' },
+    { text: `${tally.total} of ${tally.assignedTotal} assigned member(s) voted`, cls: '' },
     { text: `${tally.approveCount} Approve`, cls: 'tally-chip--approve' },
     { text: `${tally.returnCount} Return`, cls: 'tally-chip--return' },
   ];
@@ -92,16 +111,22 @@ function renderVotingSummary(controller) {
     tallyEl.appendChild(chip);
   });
 
-  votes.forEach((v) => {
+  const votes = controller.getVotes();
+  assigned.forEach((memberId) => {
+    const vote = votes.find((v) => v.voterId === memberId);
     const li = document.createElement('li');
     const meta = document.createElement('div');
     meta.className = 'activity-meta';
-    meta.textContent = `${new Date(v.timestamp).toLocaleString()} — ${v.voterName} — ${v.decision}`;
+    if (vote) {
+      meta.textContent = `${new Date(vote.timestamp).toLocaleString()} — ${vote.voterName} — ${vote.decision}`;
+    } else {
+      meta.textContent = `${getRoleLabel(memberId)} — Pending`;
+    }
     li.appendChild(meta);
-    if (v.comment) {
+    if (vote && vote.comment) {
       const note = document.createElement('div');
       note.className = 'activity-note';
-      note.textContent = v.comment;
+      note.textContent = vote.comment;
       li.appendChild(note);
     }
     list.appendChild(li);
@@ -121,14 +146,19 @@ function describeApprovedOutcome(record) {
 function renderCollateHint(controller) {
   const hint = document.getElementById('collate-hint');
   const tally = controller.voteTally();
+  const pendingLabels = controller
+    .getAssignedMembers()
+    .filter((id) => !controller.hasVoted(id))
+    .map((id) => getRoleLabel(id));
+
   if (tally.total === 0) {
-    hint.textContent = 'No votes have been cast yet. Waiting on the IRB Member panel.';
+    hint.textContent = `No votes have been cast yet. Waiting on ${pendingLabels.join(', ')}.`;
   } else if (controller.canSendForRevisionFromUnderReview()) {
-    hint.textContent = `${tally.returnCount} of ${tally.total} member(s) returned this submission. You may send it back for revision.`;
+    hint.textContent = `${tally.returnCount} of ${tally.assignedTotal} assigned member(s) returned this submission. You may send it back for revision.`;
   } else if (controller.canFinalizeApproval()) {
-    hint.textContent = `All ${tally.total} member(s) approved. You may finalize approval.`;
+    hint.textContent = `All ${tally.assignedTotal} assigned member(s) approved. You may finalize approval.`;
   } else {
-    hint.textContent = `${tally.approveCount} of ${tally.total} member(s) have voted so far.`;
+    hint.textContent = `${tally.approveCount} of ${tally.assignedTotal} assigned member(s) approved so far. Waiting on ${pendingLabels.join(', ')}.`;
   }
 
   document.getElementById('btn-finalize-approve').disabled = !controller.canFinalizeApproval();
@@ -146,6 +176,7 @@ function initIrpfPage() {
   controller.mount(document.getElementById('irpf-form-container'));
   renderActivityLog(record);
   renderVotingSummary(controller);
+  renderTriageMemberCheckboxes(record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
@@ -158,7 +189,7 @@ function initIrpfPage() {
   const returnAmendmentsBtn = document.getElementById('btn-return-amendments');
   const createIpafBtn = document.getElementById('btn-create-ipaf');
   const voteFormPanel = document.getElementById('vote-form-panel');
-  const voterNameInput = document.getElementById('voter-name');
+  const voterIdentityEl = document.getElementById('voter-identity');
   const voteCommentInput = document.getElementById('vote-comment');
   const voteError = document.getElementById('vote-error');
   const castVoteBtn = document.getElementById('btn-cast-vote');
@@ -194,7 +225,10 @@ function initIrpfPage() {
     renderCollateHint(controller);
   } else if (controller.isUnderReviewVotingOpenToMember()) {
     voteFormPanel.hidden = false;
-    showBanner('Review the IRPF below, then cast your vote as an IRB Member.', 'info');
+    voterIdentityEl.textContent = getRoleLabel(role);
+    showBanner('Review the IRPF below, then cast your vote.', 'info');
+  } else if (controller.isUnassignedMemberViewingUnderReview()) {
+    showBanner('This IRPF is under review but was not routed to you.', 'muted');
   } else if (record.status === 'pending_director_approval') {
     showBanner('Awaiting S/D Director approval before this IRPF can proceed.', 'info');
   } else if (record.status === 'pending_review') {
@@ -262,27 +296,30 @@ function initIrpfPage() {
     } else if (record.status === 'for_revision') {
       showBanner('Returned for amendments. The PI has been notified.', 'success');
     } else if (record.status === 'under_review') {
-      showBanner('Routed to the IRB Member panel for full review.', 'success');
+      const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
+      showBanner(`Routed to ${names} for full review.`, 'success');
     }
   }
 
   approveExemptionBtn.addEventListener('click', () => handleTriageDecision((c) => controller.approveForExemption(c)));
   returnAmendmentsBtn.addEventListener('click', () => handleTriageDecision((c) => controller.returnForAmendments(c)));
-  createIpafBtn.addEventListener('click', () => handleTriageDecision((c) => controller.routeToCreateIpaf(c)));
+  createIpafBtn.addEventListener('click', () =>
+    handleTriageDecision((c) => controller.routeToCreateIpaf(c, getCheckedMemberIds()))
+  );
 
   castVoteBtn.addEventListener('click', () => {
     const decisionEl = voteFormPanel.querySelector('input[name="voteDecision"]:checked');
-    const result = controller.castVote(voterNameInput.value, decisionEl ? decisionEl.value : null, voteCommentInput.value);
+    const result = controller.castVote(decisionEl ? decisionEl.value : null, voteCommentInput.value);
     if (!result.ok) {
       voteError.textContent = result.error;
       return;
     }
     voteError.textContent = '';
-    voterNameInput.value = '';
     voteCommentInput.value = '';
     voteFormPanel.querySelectorAll('input[name="voteDecision"]').forEach((r) => (r.checked = false));
     renderVotingSummary(controller);
     renderActivityLog(record);
+    voteFormPanel.hidden = true;
     showBanner('Vote recorded. Thank you.', 'success');
   });
 

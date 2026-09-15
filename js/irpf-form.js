@@ -43,8 +43,20 @@ class IrpfFormController {
     );
   }
 
+  getAssignedMembers() {
+    return this.record.assignedMembers || [];
+  }
+
+  isAssignedMember() {
+    return isIrbMember(this.currentRole) && this.getAssignedMembers().includes(this.currentRole);
+  }
+
   isUnderReviewVotingOpenToMember() {
-    return this.currentRole === 'irb-member' && this.record.status === 'under_review';
+    return this.isAssignedMember() && this.record.status === 'under_review';
+  }
+
+  isUnassignedMemberViewingUnderReview() {
+    return isIrbMember(this.currentRole) && !this.isAssignedMember() && this.record.status === 'under_review';
   }
 
   isPendingSecretariatCollation() {
@@ -59,28 +71,36 @@ class IrpfFormController {
     return this.record.votes || [];
   }
 
+  hasVoted(memberId) {
+    return this.getVotes().some((v) => v.voterId === memberId);
+  }
+
   voteTally() {
     const votes = this.getVotes();
     return {
       total: votes.length,
+      assignedTotal: this.getAssignedMembers().length,
       approveCount: votes.filter((v) => v.decision === 'Approve').length,
       returnCount: votes.filter((v) => v.decision === 'Return').length,
     };
   }
 
   canFinalizeApproval() {
-    const votes = this.getVotes();
-    return votes.length > 0 && votes.every((v) => v.decision === 'Approve');
+    const assigned = this.getAssignedMembers();
+    if (assigned.length === 0) return false;
+    return assigned.every((memberId) => {
+      const vote = this.getVotes().find((v) => v.voterId === memberId);
+      return vote && vote.decision === 'Approve';
+    });
   }
 
   canSendForRevisionFromUnderReview() {
     return this.getVotes().some((v) => v.decision === 'Return');
   }
 
-  castVote(voterName, decision, comment) {
-    const name = (voterName || '').trim();
-    if (!name) {
-      return { ok: false, error: 'Enter your name to vote.' };
+  castVote(decision, comment) {
+    if (!this.isAssignedMember()) {
+      return { ok: false, error: 'This IRPF was not routed to you for review.' };
     }
     if (!decision) {
       return { ok: false, error: 'Select Approve or Return.' };
@@ -88,20 +108,25 @@ class IrpfFormController {
     if (decision === 'Return' && !(comment || '').trim()) {
       return { ok: false, error: 'A comment is required when returning for revision.' };
     }
-    const alreadyVoted = this.getVotes().some((v) => v.voterName.trim().toLowerCase() === name.toLowerCase());
-    if (alreadyVoted) {
-      return { ok: false, error: `${name} has already voted on this IRPF.` };
+    if (this.hasVoted(this.currentRole)) {
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already voted on this IRPF.` };
     }
 
     this.record.votes = this.getVotes();
-    const vote = { voterName: name, decision, comment: (comment || '').trim(), timestamp: new Date().toISOString() };
+    const vote = {
+      voterId: this.currentRole,
+      voterName: getRoleLabel(this.currentRole),
+      decision,
+      comment: (comment || '').trim(),
+      timestamp: new Date().toISOString(),
+    };
     this.record.votes.push(vote);
 
     saveSubmission(this.record, {
       action: 'member_vote',
       actor: this.currentRole,
       status: this.record.status,
-      note: `${name}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`,
+      note: `${vote.voterName}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`,
     });
     return { ok: true };
   }
@@ -482,14 +507,21 @@ class IrpfFormController {
     return { ok: true };
   }
 
-  routeToCreateIpaf(comment) {
+  routeToCreateIpaf(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IRPF to.' };
+    }
     this.record.status = 'under_review';
     this.record.ipafRequired = true;
+    this.record.assignedMembers = assigned;
+    this.record.votes = [];
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
     saveSubmission(this.record, {
       action: 'to_create_ipaf',
       actor: this.currentRole,
       status: this.record.status,
-      note: comment || 'Routed to the IRB Member panel for full review.',
+      note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for full review: ${memberLabels}.`,
     });
     return { ok: true };
   }

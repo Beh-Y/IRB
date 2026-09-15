@@ -2,8 +2,10 @@
 
 function underReviewReadyToCollate(record) {
   const votes = record.votes || [];
+  const assigned = record.assignedMembers || [];
   if (votes.length === 0) return false;
-  return votes.some((v) => v.decision === 'Return') || votes.every((v) => v.decision === 'Approve');
+  const unanimousApproval = assigned.length > 0 && assigned.every((id) => votes.some((v) => v.voterId === id && v.decision === 'Approve'));
+  return votes.some((v) => v.decision === 'Return') || unanimousApproval;
 }
 
 function needsActionFromCurrentRole(record, role) {
@@ -13,7 +15,13 @@ function needsActionFromCurrentRole(record, role) {
     if (record.status === 'under_review') return record.routedTo === role && underReviewReadyToCollate(record);
     return false;
   }
-  if (role === 'irb-member') return record.status === 'under_review';
+  if (isIrbMember(role)) {
+    return (
+      record.status === 'under_review' &&
+      (record.assignedMembers || []).includes(role) &&
+      !(record.votes || []).some((v) => v.voterId === role)
+    );
+  }
   if (role === 'pi') return record.status === 'for_revision';
   return false;
 }

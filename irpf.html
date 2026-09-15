@@ -31,6 +31,10 @@
       </p>
       <label for="triage-comment">Comment</label>
       <textarea id="triage-comment" rows="3"></textarea>
+
+      <label>Route to IRB Members <span class="triage-hint-inline">(required for "To Create IPAF")</span></label>
+      <div id="triage-member-checkboxes" class="checkbox-group"></div>
+
       <div id="triage-error" class="field-error"></div>
       <div class="triage-actions">
         <button id="btn-approve-exemption" type="button" class="btn btn-primary">Approved for Exemption</button>
@@ -47,8 +51,7 @@
 
     <div id="vote-form-panel" class="triage-panel" hidden>
       <h2>Cast Your Vote</h2>
-      <label for="voter-name">Your Name</label>
-      <input id="voter-name" type="text" />
+      <p class="triage-hint">Voting as <strong id="voter-identity"></strong></p>
       <div class="radio-group vote-decision-group">
         <label class="radio-option"><input type="radio" name="voteDecision" value="Approve" /> Approve</label>
         <label class="radio-option"><input type="radio" name="voteDecision" value="Return" /> Return for Revision</label>

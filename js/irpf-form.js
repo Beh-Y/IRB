@@ -76,7 +76,7 @@ class IrpfFormController {
       this.isAssignedMember() &&
       !this.hasVoted(this.currentRole) &&
       (this.record.status === 'under_review' ||
-        (['for_revision', 'pending_leadership_approval', 'approved', 'pending_review'].includes(
+        (['for_revision', 'pending_leadership_approval', 'approved', 'to_create_ipaf', 'pending_review'].includes(
           this.record.status
         ) &&
           this.getVotes().length > 0))
@@ -140,7 +140,7 @@ class IrpfFormController {
       isIrbLeadership(this.currentRole) &&
       !this.hasLeadershipVoted(this.currentRole) &&
       (this.record.status === 'pending_leadership_approval' ||
-        (['approved', 'for_revision', 'pending_review'].includes(this.record.status) &&
+        (['approved', 'to_create_ipaf', 'for_revision', 'pending_review'].includes(this.record.status) &&
           this.getLeadershipApprovals().length > 0))
     );
   }
@@ -157,9 +157,10 @@ class IrpfFormController {
   /* Secretariat can record the final outcome as soon as any leader has voted —
    * it doesn't wait for both — and can keep re-deciding while the record is
    * still in flux (a late vote comes in after an early "Returned for
-   * Amendments"). But once they pick Approved for Exemption or To Create
-   * IPAF, the record reaches 'approved' -- a true terminal state -- and the
-   * task is closed: this panel doesn't reopen for it. */
+   * Amendments"). But once they pick Approved for Exemption ('approved') or
+   * To Create IPAF ('to_create_ipaf'), the record has reached a true
+   * terminal state and the task is closed: this panel doesn't reopen for
+   * either. */
   isPendingSecretariatCollation() {
     return (
       isSecretariat(this.currentRole) &&
@@ -726,7 +727,7 @@ class IrpfFormController {
 
   /* One of the Secretariat's three final decisions, available once all assigned members have voted. */
   decideToCreateIpaf(comment) {
-    this.record.status = 'approved';
+    this.record.status = 'to_create_ipaf';
     this.record.reviewOutcome = 'full_review';
     this.record.ipafRequired = true;
     const tally = this.voteTally();

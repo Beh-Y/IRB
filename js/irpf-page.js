@@ -184,12 +184,12 @@ function renderLeadershipSummary(controller) {
   });
 }
 
-function describeApprovedOutcome(record) {
+function describeFinalOutcome(record) {
+  if (record.status === 'to_create_ipaf') {
+    return 'This IRPF requires a full IPAF submission next, following full IRB Member review.';
+  }
   if (record.reviewOutcome === 'exemption') {
     return 'This IRPF was approved for exemption. No IPAF submission is required.';
-  }
-  if (record.reviewOutcome === 'full_review' && record.ipafRequired) {
-    return 'This IRPF is approved following full IRB Member review. An IPAF submission is required next.';
   }
   return 'This IRPF is approved.';
 }
@@ -325,8 +325,8 @@ function initIrpfPage() {
     showBanner('Routed to the IRB Member panel for review. Awaiting their feedback.', 'info');
   } else if (record.status === 'pending_leadership_approval') {
     showBanner('Routed to the IRB Co-Chairman and Chairman for approval. Awaiting their decision.', 'info');
-  } else if (record.status === 'approved') {
-    showBanner(describeApprovedOutcome(record), 'success');
+  } else if (record.status === 'approved' || record.status === 'to_create_ipaf') {
+    showBanner(describeFinalOutcome(record), 'success');
   } else if (record.status === 'draft') {
     showBanner('You are viewing this draft in read-only mode for your current role.', 'muted');
   }
@@ -473,8 +473,8 @@ function initIrpfPage() {
     renderActivityLog(record);
     refreshSecretariatPanels();
 
-    if (record.status === 'approved') {
-      showBanner(describeApprovedOutcome(record), 'success');
+    if (record.status === 'approved' || record.status === 'to_create_ipaf') {
+      showBanner(describeFinalOutcome(record), 'success');
     } else if (record.status === 'for_revision') {
       showBanner('Sent back for revision. The PI has been notified.', 'success');
     }

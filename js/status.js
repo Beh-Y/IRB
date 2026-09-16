@@ -7,7 +7,8 @@ const STATUS_LABELS = {
   for_revision: 'For Revision',
   under_review: 'Under Review',
   pending_leadership_approval: 'Pending Chairman Approval',
-  approved: 'Approved',
+  approved: 'Approved for Exemption',
+  to_create_ipaf: 'To Create IPAF',
 };
 
 function getStatusLabel(status) {

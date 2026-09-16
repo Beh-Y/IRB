@@ -28,8 +28,26 @@ function generateId() {
   return `sub_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/* Records saved before "To Create IPAF" got its own status were left as
+ * 'approved' (distinguishable only by reviewOutcome/ipafRequired). Correct
+ * them once, in place, so old data doesn't show as "Approved for Exemption". */
+function migrateLegacyIpafStatus(records) {
+  let changed = false;
+  records.forEach((record) => {
+    if (record.status === 'approved' && record.reviewOutcome === 'full_review' && record.ipafRequired) {
+      record.status = 'to_create_ipaf';
+      changed = true;
+    }
+  });
+  return changed;
+}
+
 function getAllSubmissions() {
-  return readJSON(STORAGE_KEYS.SUBMISSIONS, []);
+  const records = readJSON(STORAGE_KEYS.SUBMISSIONS, []);
+  if (migrateLegacyIpafStatus(records)) {
+    writeJSON(STORAGE_KEYS.SUBMISSIONS, records);
+  }
+  return records;
 }
 
 function getSubmission(id) {

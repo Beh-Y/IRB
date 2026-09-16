@@ -299,13 +299,23 @@ function initIrpfPage() {
   } else if (controller.isUnderReviewVotingOpenToMember()) {
     voteFormPanel.hidden = false;
     voterIdentityEl.textContent = getRoleLabel(role);
-    showBanner('Review the IRPF below, then cast your vote.', 'info');
+    showBanner(
+      record.status === 'under_review'
+        ? 'Review the IRPF below, then cast your vote.'
+        : 'Review the IRPF below and cast your vote — the Secretariat has already acted on this IRPF, but your review will still be recorded.',
+      'info'
+    );
   } else if (controller.isUnassignedMemberViewingUnderReview()) {
     showBanner('This IRPF is under review but was not routed to you.', 'muted');
   } else if (controller.isPendingLeadershipApproval()) {
     leadershipApprovalPanel.hidden = false;
     leadershipIdentityEl.textContent = getRoleLabel(role);
-    showBanner('Review the IRPF below, then cast your vote.', 'info');
+    showBanner(
+      record.status === 'pending_leadership_approval'
+        ? 'Review the IRPF below, then cast your vote.'
+        : 'Review the IRPF below and cast your vote — the Secretariat has already recorded a final outcome, but your review will still be captured.',
+      'info'
+    );
   } else if (controller.isLeadershipWaitingOnOther()) {
     const otherName = getRoleLabel(IRB_LEADERSHIP_IDS.find((id) => id !== role));
     showBanner(`You've voted. Waiting on ${otherName}.`, 'info');

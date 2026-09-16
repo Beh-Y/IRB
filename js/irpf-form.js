@@ -51,8 +51,17 @@ class IrpfFormController {
     return isIrbMember(this.currentRole) && this.getAssignedMembers().includes(this.currentRole);
   }
 
+  /* A member can cast their vote as soon as they're assigned, whether or not
+   * the Secretariat has already acted on other members' votes and moved the
+   * record on — their review still gets recorded either way. */
   isUnderReviewVotingOpenToMember() {
-    return this.isAssignedMember() && this.record.status === 'under_review';
+    return (
+      this.isAssignedMember() &&
+      !this.hasVoted(this.currentRole) &&
+      (this.record.status === 'under_review' ||
+        (['for_revision', 'pending_leadership_approval', 'approved'].includes(this.record.status) &&
+          this.getVotes().length > 0))
+    );
   }
 
   isUnassignedMemberViewingUnderReview() {
@@ -100,11 +109,15 @@ class IrpfFormController {
     );
   }
 
+  /* Same idea for leadership: a leader can still cast their vote even after
+   * the Secretariat has already recorded a final outcome based on the other
+   * leader's vote. */
   isPendingLeadershipApproval() {
     return (
       isIrbLeadership(this.currentRole) &&
-      this.record.status === 'pending_leadership_approval' &&
-      !this.hasLeadershipVoted(this.currentRole)
+      !this.hasLeadershipVoted(this.currentRole) &&
+      (this.record.status === 'pending_leadership_approval' ||
+        (['approved', 'for_revision'].includes(this.record.status) && this.getLeadershipApprovals().length > 0))
     );
   }
 

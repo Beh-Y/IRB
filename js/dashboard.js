@@ -1,4 +1,6 @@
-/* Renders the IRPF submissions list on index.html, scoped to the current preview role. */
+/* Renders index.html's two submission tables -- IRPF+IPAF combined into one
+ * "Project Submissions" list, and PCDF (standalone, no parent) separately --
+ * scoped to the current preview role. */
 
 /* Formats a <input type="date"> value ("YYYY-MM-DD") as "DD-MMM-YYYY" without
  * going through Date/timezone conversion, which can shift the day by one. */
@@ -77,7 +79,12 @@ function needsActionFromCurrentRole(record, role) {
           (record.leadershipApprovals || []).length > 0))
     );
   }
-  if (role === 'pi') return record.status === 'for_revision';
+  if (role === 'pi') {
+    if (record.status === 'for_revision') return true;
+    // IPAF adds an Acknowledge step after approval that the IRPF doesn't have.
+    if (record.formType === 'IPAF' && record.status === 'approved' && !record.acknowledged) return true;
+    return false;
+  }
   return false;
 }
 
@@ -91,14 +98,19 @@ function renderDashboard() {
     window.location.href = 'irpf.html';
   });
 
-  const submissions = sortByRefNumber(getSubmissionsByType('IRPF'), 'IRB');
+  // IPAF has no independent listing of its own -- it's still tied to its
+  // parent IRPF's data (category, project title/dates) -- but it should
+  // still be reachable and actionable straight from this dashboard, so it's
+  // merged into the same "Project Submissions" table rather than only
+  // reachable via the parent IRPF's page.
+  const submissions = sortByRefNumber([...getSubmissionsByType('IRPF'), ...getSubmissionsByType('IPAF')], 'IRB');
 
   const tbody = document.getElementById('submissions-body');
   tbody.innerHTML = '';
 
   if (submissions.length === 0) {
     const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = '<td colspan="8" class="empty-state">No IRPF submissions yet.</td>';
+    emptyRow.innerHTML = '<td colspan="9" class="empty-state">No project submissions yet.</td>';
     tbody.appendChild(emptyRow);
   }
 
@@ -108,6 +120,9 @@ function renderDashboard() {
 
     const refCell = document.createElement('td');
     refCell.textContent = record.data.refNumber || '(draft, no reference yet)';
+
+    const formCell = document.createElement('td');
+    formCell.textContent = record.formType;
 
     const titleCell = document.createElement('td');
     titleCell.textContent = record.data.projectTitle || '(untitled)';
@@ -122,14 +137,14 @@ function renderDashboard() {
     endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
 
     const statusCell = document.createElement('td');
-    statusCell.textContent = getStatusLabel(record.status);
+    statusCell.textContent = getStatusLabel(record.status, record.formType);
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';
 
     const actionCell = document.createElement('td');
     const link = document.createElement('a');
-    link.href = `irpf.html?id=${record.id}`;
+    link.href = `${record.formType === 'IPAF' ? 'ipaf' : 'irpf'}.html?id=${record.id}`;
     link.textContent = 'Open';
     link.className = 'btn btn-link';
     actionCell.appendChild(link);
@@ -141,6 +156,7 @@ function renderDashboard() {
     }
 
     tr.appendChild(refCell);
+    tr.appendChild(formCell);
     tr.appendChild(titleCell);
     tr.appendChild(categoryCell);
     tr.appendChild(startDateCell);

@@ -89,6 +89,10 @@ body {
   margin: 0 0 0.35rem;
 }
 
+.page-header--spaced {
+  margin-top: 2.5rem;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.2rem 0.6rem;
@@ -513,6 +517,27 @@ body {
 
 .submissions-table tr.needs-action {
   background: #fffbeb;
+}
+
+/* Shows the first 5 rows, scrolling for the rest, while keeping the header
+ * fixed -- splits the table into two independently-laid-out tables (head vs
+ * body) with matching column widths, since a scrolling <tbody> can't keep
+ * a <thead> in a single table in view otherwise. */
+.submissions-table-scroll .submissions-table {
+  display: block;
+}
+
+.submissions-table-scroll thead,
+.submissions-table-scroll tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.submissions-table-scroll tbody {
+  display: block;
+  max-height: 340px;
+  overflow-y: auto;
 }
 
 .action-badge {

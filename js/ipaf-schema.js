@@ -55,7 +55,7 @@ const IPAF_SCHEMA = [
         label: 'Principal Investigator Name',
         type: 'people-list',
         required: true,
-        hint: 'Add each Principal Investigator: Name, School/Department, Contact, and Email.',
+        hint: 'Add the Principal Investigator, then use "Add Team Members" for anyone else on the project team.',
       },
     ],
   },

@@ -370,7 +370,7 @@ class IpafFormController {
         const addBtn = document.createElement('button');
         addBtn.type = 'button';
         addBtn.className = 'btn btn-secondary btn-small';
-        addBtn.textContent = 'Add Principal Investigator';
+        addBtn.textContent = 'Add Team Members';
         addBtn.addEventListener('click', () => this.addPerson(field));
         controlWrap.appendChild(addBtn);
       }
@@ -403,25 +403,35 @@ class IpafFormController {
     const people = this.record.data[field.id] || [];
     wrap.innerHTML = '';
     people.forEach((person, index) => {
-      const row = document.createElement('div');
-      row.className = 'person-row';
+      const card = document.createElement('div');
+      card.className = 'person-card';
 
       [
         ['name', 'Name'],
+        ['role', 'Role', 'e.g. Principal Investigator, Co-Investigator, Research Assistant'],
         ['schoolDept', 'School/Department'],
         ['contact', 'Contact'],
         ['email', 'Email'],
-      ].forEach(([key, placeholder]) => {
+      ].forEach(([key, label, placeholder]) => {
+        const fieldRow = document.createElement('div');
+        fieldRow.className = 'person-field-row';
+
+        const fieldLabel = document.createElement('label');
+        fieldLabel.textContent = label;
+        fieldRow.appendChild(fieldLabel);
+
         const input = document.createElement('input');
         input.type = 'text';
-        input.placeholder = placeholder;
+        input.placeholder = placeholder || label;
         input.value = person[key] || '';
         input.disabled = disabled;
         input.addEventListener('input', () => {
           people[index] = { ...people[index], [key]: input.value };
           this.record.data[field.id] = people;
         });
-        row.appendChild(input);
+        fieldRow.appendChild(input);
+
+        card.appendChild(fieldRow);
       });
 
       if (!disabled) {
@@ -435,16 +445,16 @@ class IpafFormController {
           this.renderPeopleList(field, wrap);
           this.refreshAll();
         });
-        row.appendChild(removeBtn);
+        card.appendChild(removeBtn);
       }
 
-      wrap.appendChild(row);
+      wrap.appendChild(card);
     });
   }
 
   addPerson(field) {
     const people = this.record.data[field.id] || [];
-    people.push({ name: '', schoolDept: '', contact: '', email: '' });
+    people.push({ name: '', role: '', schoolDept: '', contact: '', email: '' });
     this.record.data[field.id] = people;
     this.renderPeopleList(field, document.getElementById(`${field.id}-list`));
     this.refreshAll();

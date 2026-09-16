@@ -145,6 +145,7 @@ function initIpafPage() {
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
+  const approveBtn = document.getElementById('btn-approve');
   const closeBtn = document.getElementById('btn-close');
   const triagePanel = document.getElementById('triage-panel');
   const triageComment = document.getElementById('triage-comment');
@@ -167,6 +168,7 @@ function initIpafPage() {
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
+  approveBtn.hidden = true;
   triagePanel.hidden = true;
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
@@ -185,6 +187,12 @@ function initIpafPage() {
       showBanner('This IPAF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
       piCommentPanel.hidden = false;
     }
+  } else if (controller.isPendingThisDirectorApproval()) {
+    approveBtn.hidden = false;
+    showBanner(
+      'This IPAF is awaiting your approval as S/D Director before it can be routed to the IRB Secretariat.',
+      'info'
+    );
   } else if (controller.isPendingSecretariatTriage()) {
     triagePanel.hidden = false;
   } else if (controller.isPendingSecretariatUnderReviewAction()) {
@@ -206,6 +214,8 @@ function initIpafPage() {
   } else if (controller.isPendingAcknowledgement()) {
     acknowledgePanel.hidden = false;
     showBanner('This IPAF is approved. Please acknowledge your responsibilities as PI below.', 'success');
+  } else if (record.status === 'pending_director_approval') {
+    showBanner('Awaiting S/D Director approval before this IPAF can proceed.', 'info');
   } else if (record.status === 'pending_review') {
     showBanner(`Routed to ${getRoleLabel(record.routedTo)} for review.`, 'info');
   } else if (record.status === 'for_revision') {
@@ -238,7 +248,9 @@ function initIpafPage() {
     }
     document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
     showBanner(
-      `${wasForRevision ? 'Resubmitted' : 'Submitted'}. Routed to ${getRoleLabel(record.routedTo)} for review.`,
+      wasForRevision
+        ? `Resubmitted. Routed to ${getRoleLabel(record.routedTo)} for review.`
+        : `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'
     );
     renderActivityLog(record);
@@ -246,6 +258,14 @@ function initIpafPage() {
     submitBtn.hidden = true;
     piCommentPanel.hidden = true;
     history.replaceState(null, '', `ipaf.html?id=${record.id}`);
+  });
+
+  approveBtn.addEventListener('click', () => {
+    controller.directorApprove();
+    document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
+    showBanner(`Approved and routed to ${getRoleLabel(record.routedTo)}.`, 'success');
+    renderActivityLog(record);
+    approveBtn.hidden = true;
   });
 
   routeToMembersBtn.addEventListener('click', () => {

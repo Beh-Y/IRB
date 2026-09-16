@@ -1,13 +1,13 @@
 /*
  * IPAF (IRB Protocol Application Form) document generation script.
  * Renders the IPAF section-by-section from IPAF_SCHEMA and drives its
- * Draft -> For Review -> Under Review -> (For Revision loop) -> Approved
- * workflow. Unlike the IRPF, there's no S/D Director approval gate (the
- * Director and POC just get read access "for record keeping") and no
- * Co-Chairman/Chairman leadership tier -- IRB Member review is the only
- * review stage, per the IPAF spec. The Secretariat/member review logic
- * (act on partial votes, keep re-deciding, stragglers can still vote even
- * after the record moves on or gets routed back) mirrors the IRPF's.
+ * Draft -> S/D Director Approval -> For Review -> Under Review -> (For
+ * Revision loop) -> Approved workflow, the same shape as the IRPF's.
+ * Unlike the IRPF, there's no Co-Chairman/Chairman leadership tier -- IRB
+ * Member review is the only review stage, per the IPAF spec. The
+ * Secretariat/member review logic (act on partial votes, keep re-deciding,
+ * stragglers can still vote even after the record moves on or gets routed
+ * back) mirrors the IRPF's.
  */
 
 class IpafFormController {
@@ -21,6 +21,23 @@ class IpafFormController {
 
   isEditableByPi() {
     return this.currentRole === 'pi' && ['draft', 'for_revision'].includes(this.record.status);
+  }
+
+  isPendingThisDirectorApproval() {
+    return this.currentRole === 'sd-director' && this.record.status === 'pending_director_approval';
+  }
+
+  directorApprove() {
+    const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+    this.record.routedTo = secretariat;
+    this.record.status = 'pending_review';
+    saveSubmission(this.record, {
+      action: 'director_approve',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: `Auto-routed to ${getRoleLabel(secretariat)} based on Category of Research.`,
+    });
+    return { ok: true };
   }
 
   isPendingSecretariatTriage() {
@@ -648,17 +665,30 @@ class IpafFormController {
     if (piDateEl) piDateEl.textContent = this.record.data.piSubmissionDate;
 
     const wasForRevision = this.record.status === 'for_revision';
-    const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
-    this.record.routedTo = secretariat;
-    this.record.status = 'pending_review';
 
-    const routedNote = `Routed to ${getRoleLabel(secretariat)} for review.`;
-    saveSubmission(this.record, {
-      action: wasForRevision ? 'resubmit' : 'submit',
-      actor: this.currentRole,
-      status: this.record.status,
-      note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
-    });
+    if (wasForRevision) {
+      // Resubmission after Secretariat's "Returned for Amendments" skips the
+      // Director gate and routes straight back to the Secretariat, same as
+      // the IRPF.
+      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+      this.record.routedTo = secretariat;
+      this.record.status = 'pending_review';
+      const routedNote = `Resubmitted and routed to ${getRoleLabel(secretariat)}.`;
+      saveSubmission(this.record, {
+        action: 'resubmit',
+        actor: this.currentRole,
+        status: this.record.status,
+        note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+      });
+    } else {
+      this.record.status = 'pending_director_approval';
+      saveSubmission(this.record, {
+        action: 'submit',
+        actor: this.currentRole,
+        status: this.record.status,
+        note: 'Routed to S/D Director for approval.',
+      });
+    }
 
     return { ok: true };
   }

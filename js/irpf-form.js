@@ -3,34 +3,9 @@
  * Renders the IRPF into the DOM section-by-section from IRPF_SCHEMA, wires
  * conditional field logic + validation, and drives the Draft -> Director
  * Approval -> Pending Review transitions (incl. reference-number assignment).
+ * Shared helpers (flattenFields, countWords, formatDateDDMMMYYYY, file
+ * reading) live in form-utils.js, loaded before this file.
  */
-
-function flattenFields(schema) {
-  return schema.flatMap((section) => section.fields);
-}
-
-function countWords(str) {
-  return (str || '').trim().split(/\s+/).filter(Boolean).length;
-}
-
-function formatDateDDMMMYYYY(date) {
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${String(date.getDate()).padStart(2, '0')}-${months[date.getMonth()]}-${date.getFullYear()}`;
-}
-
-// Files are persisted as data URLs inside the record itself (there's no
-// server to upload to), so a per-file cap keeps any one submission from
-// blowing past localStorage's quota.
-const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024;
-
-function readFileAsDataUrl(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve({ name: file.name, size: file.size, type: file.type, dataUrl: reader.result });
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
 
 class IrpfFormController {
   constructor(record, currentRole) {

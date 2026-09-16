@@ -25,7 +25,42 @@ function loadOrCreateRecord() {
     routedTo: null,
     reviewOutcome: null,
     ipafRequired: null,
+    childIpafId: null,
   };
+}
+
+/* Creates the child IPAF record for this IRPF, carrying over the fields the
+ * IPAF spec marks "Carried from IRPF" (reference number, project title/
+ * dates, and the category of research needed to route and suffix it). */
+function createChildIpaf(irpfRecord, actorRole) {
+  const ipafRecord = {
+    id: generateId(),
+    formType: 'IPAF',
+    status: 'draft',
+    parentIrpfId: irpfRecord.id,
+    data: {
+      irpfReferenceNumber: irpfRecord.data.refNumber,
+      projectTitle: irpfRecord.data.projectTitle,
+      projectStartDate: irpfRecord.data.projectStartDate,
+      projectEndDate: irpfRecord.data.projectEndDate,
+      categoryOfResearch: irpfRecord.data.categoryOfResearch,
+    },
+    history: [],
+    votes: [],
+    assignedMembers: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: null,
+    routedTo: null,
+    acknowledged: false,
+    acknowledgedAt: null,
+  };
+  saveSubmission(ipafRecord, {
+    action: 'created',
+    actor: actorRole,
+    status: ipafRecord.status,
+    note: `Created from IRPF ${irpfRecord.data.refNumber}.`,
+  });
+  return ipafRecord;
 }
 
 function renderTriageMemberCheckboxes(selected) {
@@ -331,6 +366,41 @@ function initIrpfPage() {
     showBanner('You are viewing this draft in read-only mode for your current role.', 'muted');
   }
 
+  const ipafLinkPanel = document.getElementById('ipaf-link-panel');
+  const createIpafChildBtn = document.getElementById('btn-create-ipaf-child');
+  const openIpafChildLink = document.getElementById('link-open-ipaf-child');
+
+  // Re-run after any same-page action that could change record.status to/from
+  // 'to_create_ipaf' (there's no page reload in between to re-derive this).
+  function refreshIpafLinkPanel() {
+    if (record.status === 'to_create_ipaf') {
+      ipafLinkPanel.hidden = false;
+      if (record.childIpafId) {
+        createIpafChildBtn.hidden = true;
+        openIpafChildLink.hidden = false;
+        openIpafChildLink.href = `ipaf.html?id=${record.childIpafId}`;
+      } else {
+        createIpafChildBtn.hidden = false;
+        openIpafChildLink.hidden = true;
+      }
+    } else {
+      ipafLinkPanel.hidden = true;
+    }
+  }
+  refreshIpafLinkPanel();
+
+  createIpafChildBtn.addEventListener('click', () => {
+    const ipafRecord = createChildIpaf(record, role);
+    record.childIpafId = ipafRecord.id;
+    saveSubmission(record, {
+      action: 'ipaf_created',
+      actor: role,
+      status: record.status,
+      note: `Created child IPAF ${ipafRecord.id}.`,
+    });
+    window.location.href = `ipaf.html?id=${ipafRecord.id}`;
+  });
+
   saveBtn.addEventListener('click', () => {
     controller.save();
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
@@ -472,6 +542,7 @@ function initIrpfPage() {
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
     renderActivityLog(record);
     refreshSecretariatPanels();
+    refreshIpafLinkPanel();
 
     if (record.status === 'approved' || record.status === 'to_create_ipaf') {
       showBanner(describeFinalOutcome(record), 'success');

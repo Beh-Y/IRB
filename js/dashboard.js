@@ -38,6 +38,36 @@ function sortByRefNumber(submissions, prefix) {
   });
 }
 
+/* Orders IRPFs by reference number (newest first), then places each IPAF
+ * immediately after its parent IRPF -- rather than sorting IPAF and IRPF
+ * together by reference number, which would only coincidentally keep a
+ * child near its parent (they can land in different numbering periods,
+ * e.g. an IPAF created the following month). */
+function groupSubmissionsByParent() {
+  const irpfRecords = sortByRefNumber(getSubmissionsByType('IRPF'), 'IRB');
+  const ipafByParentId = new Map();
+  getSubmissionsByType('IPAF').forEach((record) => {
+    const siblings = ipafByParentId.get(record.parentIrpfId) || [];
+    siblings.push(record);
+    ipafByParentId.set(record.parentIrpfId, siblings);
+  });
+
+  const grouped = [];
+  irpfRecords.forEach((irpf) => {
+    grouped.push(irpf);
+    const children = ipafByParentId.get(irpf.id);
+    if (children) {
+      grouped.push(...children);
+      ipafByParentId.delete(irpf.id);
+    }
+  });
+  // Any IPAF whose parent isn't in the list (shouldn't normally happen) still
+  // gets shown, just at the end rather than dropped.
+  ipafByParentId.forEach((children) => grouped.push(...children));
+
+  return grouped;
+}
+
 function needsActionFromCurrentRolePcdf(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
   if (role === 'pi') return record.status === 'approved' && !record.acknowledged;
@@ -102,8 +132,8 @@ function renderDashboard() {
   // parent IRPF's data (category, project title/dates) -- but it should
   // still be reachable and actionable straight from this dashboard, so it's
   // merged into the same "Project Submissions" table rather than only
-  // reachable via the parent IRPF's page.
-  const submissions = sortByRefNumber([...getSubmissionsByType('IRPF'), ...getSubmissionsByType('IPAF')], 'IRB');
+  // reachable via the parent IRPF's page, grouped right under its parent.
+  const submissions = groupSubmissionsByParent();
 
   const tbody = document.getElementById('submissions-body');
   tbody.innerHTML = '';
@@ -117,6 +147,7 @@ function renderDashboard() {
   submissions.forEach((record) => {
     const tr = document.createElement('tr');
     if (needsActionFromCurrentRole(record, role)) tr.classList.add('needs-action');
+    if (record.formType === 'IPAF') tr.classList.add('child-row');
 
     const refCell = document.createElement('td');
     refCell.textContent = record.data.refNumber || '(draft, no reference yet)';

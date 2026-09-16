@@ -363,6 +363,11 @@ body {
   color: var(--color-text-muted);
 }
 
+.file-list a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
 .file-remove-btn {
   background: none;
   border: none;

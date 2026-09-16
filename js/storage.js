@@ -16,7 +16,12 @@ function readJSON(key, fallback) {
 }
 
 function writeJSON(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.error(`Failed to write ${key} to localStorage`, err);
+    throw new Error('Local storage is full. Try removing an uploaded file, then save again.');
+  }
 }
 
 function generateId() {

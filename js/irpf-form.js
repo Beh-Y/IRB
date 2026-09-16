@@ -18,6 +18,20 @@ function formatDateDDMMMYYYY(date) {
   return `${String(date.getDate()).padStart(2, '0')}-${months[date.getMonth()]}-${date.getFullYear()}`;
 }
 
+// Files are persisted as data URLs inside the record itself (there's no
+// server to upload to), so a per-file cap keeps any one submission from
+// blowing past localStorage's quota.
+const MAX_FILE_SIZE_BYTES = 4 * 1024 * 1024;
+
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve({ name: file.name, size: file.size, type: file.type, dataUrl: reader.result });
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 class IrpfFormController {
   constructor(record, currentRole) {
     this.record = record;
@@ -414,14 +428,26 @@ class IrpfFormController {
     return null;
   }
 
-  /* Files already recorded for this field, each with a Remove link so the PI
-   * can drop one without losing the rest. */
+  /* Files already recorded for this field. Every role can click a file to
+   * view/download it; only the PI (while editing) gets the Remove link. */
   renderFileList(field, list) {
     const disabled = !this.isEditableByPi();
     list.innerHTML = '';
     (this.record.data[field.id] || []).forEach((f, index) => {
       const li = document.createElement('li');
-      li.textContent = `${f.name} (${Math.round(f.size / 1024)} KB)`;
+      const label = `${f.name} (${Math.round(f.size / 1024)} KB)`;
+      if (f.dataUrl) {
+        const link = document.createElement('a');
+        link.href = f.dataUrl;
+        link.download = f.name;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = label;
+        li.appendChild(link);
+      } else {
+        // Uploaded before file content was persisted -- nothing to open.
+        li.appendChild(document.createTextNode(label));
+      }
       if (!disabled) {
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
@@ -445,9 +471,22 @@ class IrpfFormController {
   /* Selecting files again adds to what's already been uploaded for this
    * field instead of replacing it -- a fresh file dialog only ever reports
    * the files picked in that dialog, so without this the previous batch
-   * would be lost. */
-  onFileChanged(field, input) {
-    const newFiles = Array.from(input.files).map((f) => ({ name: f.name, size: f.size, type: f.type }));
+   * would be lost. Each file's content is read as a data URL so anyone
+   * viewing the record later can open it -- there's no server to fetch it
+   * from. */
+  async onFileChanged(field, input) {
+    const els = this.fieldEls[field.id];
+    const selected = Array.from(input.files);
+    const tooBig = selected.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    const okFiles = selected.filter((f) => f.size <= MAX_FILE_SIZE_BYTES);
+
+    if (els) {
+      els.errorEl.textContent = tooBig.length
+        ? `${tooBig.map((f) => f.name).join(', ')} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit, not added.`
+        : '';
+    }
+
+    const newFiles = await Promise.all(okFiles.map(readFileAsDataUrl));
     const existing = this.record.data[field.id] || [];
     const merged = field.multiple ? existing.slice() : [];
     newFiles.forEach((f) => {

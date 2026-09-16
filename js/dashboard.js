@@ -1,5 +1,14 @@
 /* Renders the IRPF submissions list on index.html, scoped to the current preview role. */
 
+/* Formats a <input type="date"> value ("YYYY-MM-DD") as "DD-MMM-YYYY" without
+ * going through Date/timezone conversion, which can shift the day by one. */
+function formatIsoDate(isoDate) {
+  if (!isoDate) return '—';
+  const [year, month, day] = isoDate.split('-');
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${day}-${months[Number(month) - 1]}-${year}`;
+}
+
 function needsActionFromCurrentRole(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
   if (role === 'irb-admin-edu' || role === 'irb-admin-tie') {
@@ -58,7 +67,7 @@ function renderDashboard() {
 
   if (submissions.length === 0) {
     const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = '<td colspan="6" class="empty-state">No IRPF submissions yet.</td>';
+    emptyRow.innerHTML = '<td colspan="8" class="empty-state">No IRPF submissions yet.</td>';
     tbody.appendChild(emptyRow);
     return;
   }
@@ -75,6 +84,12 @@ function renderDashboard() {
 
     const categoryCell = document.createElement('td');
     categoryCell.textContent = record.data.categoryOfResearch || '—';
+
+    const startDateCell = document.createElement('td');
+    startDateCell.textContent = formatIsoDate(record.data.projectStartDate);
+
+    const endDateCell = document.createElement('td');
+    endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
 
     const statusCell = document.createElement('td');
     statusCell.textContent = getStatusLabel(record.status);
@@ -98,6 +113,8 @@ function renderDashboard() {
     tr.appendChild(refCell);
     tr.appendChild(titleCell);
     tr.appendChild(categoryCell);
+    tr.appendChild(startDateCell);
+    tr.appendChild(endDateCell);
     tr.appendChild(statusCell);
     tr.appendChild(updatedCell);
     tr.appendChild(actionCell);

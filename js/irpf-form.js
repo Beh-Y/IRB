@@ -155,15 +155,17 @@ class IrpfFormController {
   }
 
   /* Secretariat can record the final outcome as soon as any leader has voted —
-   * it doesn't wait for both — and can keep re-deciding at any time (e.g. a
-   * late vote comes in after they've already recorded an outcome) right up
-   * until the PI resubmits. */
+   * it doesn't wait for both — and can keep re-deciding while the record is
+   * still in flux (a late vote comes in after an early "Returned for
+   * Amendments"). But once they pick Approved for Exemption or To Create
+   * IPAF, the record reaches 'approved' -- a true terminal state -- and the
+   * task is closed: this panel doesn't reopen for it. */
   isPendingSecretariatCollation() {
     return (
       isSecretariat(this.currentRole) &&
       this.record.routedTo === this.currentRole &&
       this.getLeadershipApprovals().length > 0 &&
-      ['pending_leadership_approval', 'approved', 'for_revision'].includes(this.record.status)
+      ['pending_leadership_approval', 'for_revision'].includes(this.record.status)
     );
   }
 

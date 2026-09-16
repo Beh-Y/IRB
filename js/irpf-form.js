@@ -99,13 +99,16 @@ class IrpfFormController {
   }
 
   /* Secretariat can act on the member panel as soon as any member has voted —
-   * it doesn't wait for the rest to weigh in. */
+   * it doesn't wait for the rest to weigh in — and can keep acting on it (e.g.
+   * reconsider after a late vote) right up until it's routed to leadership or
+   * the PI resubmits. */
   isPendingSecretariatUnderReviewAction() {
     return (
       isSecretariat(this.currentRole) &&
-      this.record.status === 'under_review' &&
       this.record.routedTo === this.currentRole &&
-      this.getVotes().length > 0
+      this.getVotes().length > 0 &&
+      this.getLeadershipApprovals().length === 0 &&
+      ['under_review', 'for_revision'].includes(this.record.status)
     );
   }
 
@@ -131,13 +134,15 @@ class IrpfFormController {
   }
 
   /* Secretariat can record the final outcome as soon as any leader has voted —
-   * it doesn't wait for both. */
+   * it doesn't wait for both — and can keep re-deciding at any time (e.g. a
+   * late vote comes in after they've already recorded an outcome) right up
+   * until the PI resubmits. */
   isPendingSecretariatCollation() {
     return (
       isSecretariat(this.currentRole) &&
-      this.record.status === 'pending_leadership_approval' &&
       this.record.routedTo === this.currentRole &&
-      this.getLeadershipApprovals().length > 0
+      this.getLeadershipApprovals().length > 0 &&
+      ['pending_leadership_approval', 'approved', 'for_revision'].includes(this.record.status)
     );
   }
 

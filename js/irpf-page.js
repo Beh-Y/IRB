@@ -299,23 +299,13 @@ function initIrpfPage() {
   } else if (controller.isUnderReviewVotingOpenToMember()) {
     voteFormPanel.hidden = false;
     voterIdentityEl.textContent = getRoleLabel(role);
-    showBanner(
-      record.status === 'under_review'
-        ? 'Review the IRPF below, then cast your vote.'
-        : 'Review the IRPF below and cast your vote — the Secretariat has already acted on this IRPF, but your review will still be recorded.',
-      'info'
-    );
+    showBanner('Review the IRPF below, then cast your vote.', 'info');
   } else if (controller.isUnassignedMemberViewingUnderReview()) {
     showBanner('This IRPF is under review but was not routed to you.', 'muted');
   } else if (controller.isPendingLeadershipApproval()) {
     leadershipApprovalPanel.hidden = false;
     leadershipIdentityEl.textContent = getRoleLabel(role);
-    showBanner(
-      record.status === 'pending_leadership_approval'
-        ? 'Review the IRPF below, then cast your vote.'
-        : 'Review the IRPF below and cast your vote — the Secretariat has already recorded a final outcome, but your review will still be captured.',
-      'info'
-    );
+    showBanner('Review the IRPF below, then cast your vote.', 'info');
   } else if (controller.isLeadershipWaitingOnOther()) {
     const otherName = getRoleLabel(IRB_LEADERSHIP_IDS.find((id) => id !== role));
     showBanner(`You've voted. Waiting on ${otherName}.`, 'info');
@@ -408,12 +398,24 @@ function initIrpfPage() {
     showBanner('Vote recorded. Thank you.', 'success');
   });
 
+  // The Secretariat can keep acting on these panels even after they've just
+  // acted — e.g. a late vote comes in and changes their mind — so instead of
+  // hiding the panel after a click, re-evaluate whether it's still available.
+  function refreshSecretariatPanels() {
+    underReviewActionPanel.hidden = !controller.isPendingSecretariatUnderReviewAction();
+    if (!underReviewActionPanel.hidden) renderUnderReviewActionHint(controller);
+
+    collatePanel.hidden = !controller.isPendingSecretariatCollation();
+    if (!collatePanel.hidden) renderCollateHint(controller);
+  }
+
   routeToLeadershipBtn.addEventListener('click', () => {
     controller.routeToLeadershipApproval(underReviewActionCommentInput.value);
+    underReviewActionCommentInput.value = '';
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
     renderActivityLog(record);
     renderLeadershipSummary(controller);
-    underReviewActionPanel.hidden = true;
+    refreshSecretariatPanels();
     showBanner('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
   });
 
@@ -424,9 +426,10 @@ function initIrpfPage() {
       return;
     }
     underReviewActionError.textContent = '';
+    underReviewActionCommentInput.value = '';
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
     renderActivityLog(record);
-    underReviewActionPanel.hidden = true;
+    refreshSecretariatPanels();
     showBanner('Sent back for revision. The PI has been notified.', 'success');
   });
 
@@ -454,9 +457,10 @@ function initIrpfPage() {
       return;
     }
     collateError.textContent = '';
+    collateComment.value = '';
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
     renderActivityLog(record);
-    collatePanel.hidden = true;
+    refreshSecretariatPanels();
 
     if (record.status === 'approved') {
       showBanner(describeApprovedOutcome(record), 'success');

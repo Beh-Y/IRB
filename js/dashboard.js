@@ -1,44 +1,15 @@
 /* Renders the IRPF submissions list on index.html, scoped to the current preview role. */
 
-function assignedVotesAllIn(record) {
-  const votes = record.votes || [];
-  const assigned = record.assignedMembers || [];
-  return assigned.length > 0 && assigned.every((id) => votes.some((v) => v.voterId === id));
-}
-
-function assignedVotesUnanimousApproval(record) {
-  const votes = record.votes || [];
-  const assigned = record.assignedMembers || [];
-  return (
-    assigned.length > 0 &&
-    assigned.every((id) => {
-      const vote = votes.find((v) => v.voterId === id);
-      return vote && vote.decision === 'Approve';
-    })
-  );
-}
-
-function underReviewReadyToCollate(record) {
-  return assignedVotesAllIn(record) && !assignedVotesUnanimousApproval(record);
-}
-
-function underReviewReadyToRouteToLeadership(record) {
-  return assignedVotesAllIn(record) && assignedVotesUnanimousApproval(record);
-}
-
-function leadershipReadyToCollate(record) {
-  const approvals = record.leadershipApprovals || [];
-  return IRB_LEADERSHIP_IDS.every((id) => approvals.some((a) => a.approverId === id));
-}
-
 function needsActionFromCurrentRole(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
   if (role === 'irb-admin-edu' || role === 'irb-admin-tie') {
     if (record.status === 'pending_review') return record.routedTo === role;
-    if (record.status === 'under_review') {
-      return record.routedTo === role && (underReviewReadyToCollate(record) || underReviewReadyToRouteToLeadership(record));
+    // The Secretariat can act as soon as any single review is in — it doesn't
+    // wait for the full member panel or both leaders to weigh in.
+    if (record.status === 'under_review') return record.routedTo === role && (record.votes || []).length > 0;
+    if (record.status === 'pending_leadership_approval') {
+      return record.routedTo === role && (record.leadershipApprovals || []).length > 0;
     }
-    if (record.status === 'pending_leadership_approval') return record.routedTo === role && leadershipReadyToCollate(record);
     return false;
   }
   if (isIrbMember(role)) {

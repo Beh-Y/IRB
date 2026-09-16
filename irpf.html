@@ -63,18 +63,17 @@
       </div>
     </div>
 
-    <div id="route-to-leadership-panel" class="triage-panel" hidden>
+    <div id="under-review-action-panel" class="triage-panel" hidden>
       <h2>Secretariat Review</h2>
-      <p class="triage-hint">
-        All assigned IRB Members approved. Route this IRPF to the Co-Chairman and Chairman for their approval before
-        recording the final outcome.
-      </p>
-      <label for="route-leadership-comment">Comment (optional)</label>
-      <textarea id="route-leadership-comment" rows="3"></textarea>
+      <p id="under-review-action-hint" class="triage-hint"></p>
+      <label for="under-review-action-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
+      <textarea id="under-review-action-comment" rows="3"></textarea>
+      <div id="under-review-action-error" class="field-error"></div>
       <div class="triage-actions">
         <button id="btn-route-to-leadership" type="button" class="btn btn-primary">
           Route to Co-Chairman &amp; Chairman for Approval
         </button>
+        <button id="btn-return-amendments-early" type="button" class="btn btn-secondary">Returned for Amendments</button>
       </div>
     </div>
 

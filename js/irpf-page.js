@@ -196,19 +196,20 @@ function describeApprovedOutcome(record) {
 
 function renderCollateHint(controller) {
   const hint = document.getElementById('collate-hint');
-  if (controller.record.status === 'pending_leadership_approval') {
-    const tally = controller.leadershipTally();
-    hint.textContent =
-      `The Co-Chairman and Chairman have both reviewed this IRPF: ` +
-      `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
-      'Choose the final outcome below.';
-    return;
-  }
+  const tally = controller.leadershipTally();
+  hint.textContent =
+    `${tally.total} of ${tally.leadershipTotal} IRB leader(s) have reviewed this IRPF so far: ` +
+    `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
+    'Choose the final outcome below, or wait for the rest if you prefer.';
+}
+
+function renderUnderReviewActionHint(controller) {
+  const hint = document.getElementById('under-review-action-hint');
   const tally = controller.voteTally();
   hint.textContent =
-    `All ${tally.assignedTotal} assigned member(s) have reviewed this IRPF: ` +
+    `${tally.total} of ${tally.assignedTotal} assigned member(s) have reviewed this IRPF so far: ` +
     `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
-    'Choose the final outcome below.';
+    'You can route it on to the Co-Chairman and Chairman, or return it for amendments now — or wait for the rest.';
 }
 
 function initIrpfPage() {
@@ -246,9 +247,11 @@ function initIrpfPage() {
   const createIpafBtn = document.getElementById('btn-create-ipaf');
   const piCommentPanel = document.getElementById('pi-comment-panel');
   const piCommentInput = document.getElementById('pi-comment');
-  const routeToLeadershipPanel = document.getElementById('route-to-leadership-panel');
-  const routeLeadershipCommentInput = document.getElementById('route-leadership-comment');
+  const underReviewActionPanel = document.getElementById('under-review-action-panel');
+  const underReviewActionCommentInput = document.getElementById('under-review-action-comment');
+  const underReviewActionError = document.getElementById('under-review-action-error');
   const routeToLeadershipBtn = document.getElementById('btn-route-to-leadership');
+  const returnAmendmentsEarlyBtn = document.getElementById('btn-return-amendments-early');
   const leadershipApprovalPanel = document.getElementById('leadership-approval-panel');
   const leadershipIdentityEl = document.getElementById('leadership-identity');
   const leadershipCommentInput = document.getElementById('leadership-comment');
@@ -262,7 +265,7 @@ function initIrpfPage() {
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
   piCommentPanel.hidden = true;
-  routeToLeadershipPanel.hidden = true;
+  underReviewActionPanel.hidden = true;
   leadershipApprovalPanel.hidden = true;
 
   if (controller.isEditableByPi()) {
@@ -283,8 +286,9 @@ function initIrpfPage() {
   } else if (controller.isPendingSecretariatCollation()) {
     collatePanel.hidden = false;
     renderCollateHint(controller);
-  } else if (controller.isPendingSecretariatRouteToLeadership()) {
-    routeToLeadershipPanel.hidden = false;
+  } else if (controller.isPendingSecretariatUnderReviewAction()) {
+    underReviewActionPanel.hidden = false;
+    renderUnderReviewActionHint(controller);
   } else if (controller.isAwaitingMemberReview()) {
     const pending = controller
       .getAssignedMembers()
@@ -395,12 +399,25 @@ function initIrpfPage() {
   });
 
   routeToLeadershipBtn.addEventListener('click', () => {
-    controller.routeToLeadershipApproval(routeLeadershipCommentInput.value);
+    controller.routeToLeadershipApproval(underReviewActionCommentInput.value);
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
     renderActivityLog(record);
     renderLeadershipSummary(controller);
-    routeToLeadershipPanel.hidden = true;
+    underReviewActionPanel.hidden = true;
     showBanner('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+  });
+
+  returnAmendmentsEarlyBtn.addEventListener('click', () => {
+    const result = controller.returnForAmendments(underReviewActionCommentInput.value);
+    if (!result.ok) {
+      underReviewActionError.textContent = result.error;
+      return;
+    }
+    underReviewActionError.textContent = '';
+    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
+    renderActivityLog(record);
+    underReviewActionPanel.hidden = true;
+    showBanner('Sent back for revision. The PI has been notified.', 'success');
   });
 
   leadershipVoteBtn.addEventListener('click', () => {

@@ -88,12 +88,22 @@ class IrpfFormController {
     return this.record.leadershipApprovals || [];
   }
 
-  hasLeadershipApproved(roleId) {
+  hasLeadershipVoted(roleId) {
     return this.getLeadershipApprovals().some((a) => a.approverId === roleId);
   }
 
-  bothLeadersApproved() {
-    return IRB_LEADERSHIP_IDS.every((id) => this.hasLeadershipApproved(id));
+  allLeadersVoted() {
+    return IRB_LEADERSHIP_IDS.every((id) => this.hasLeadershipVoted(id));
+  }
+
+  leadershipTally() {
+    const approvals = this.getLeadershipApprovals();
+    return {
+      total: approvals.length,
+      leadershipTotal: IRB_LEADERSHIP_IDS.length,
+      approveCount: approvals.filter((a) => a.decision === 'Approve').length,
+      returnCount: approvals.filter((a) => a.decision === 'Return').length,
+    };
   }
 
   /* Secretariat's action once members unanimously approve: escalate to leadership. */
@@ -111,7 +121,7 @@ class IrpfFormController {
     return (
       isIrbLeadership(this.currentRole) &&
       this.record.status === 'pending_leadership_approval' &&
-      !this.hasLeadershipApproved(this.currentRole)
+      !this.hasLeadershipVoted(this.currentRole)
     );
   }
 
@@ -119,8 +129,8 @@ class IrpfFormController {
     return (
       isIrbLeadership(this.currentRole) &&
       this.record.status === 'pending_leadership_approval' &&
-      this.hasLeadershipApproved(this.currentRole) &&
-      !this.bothLeadersApproved()
+      this.hasLeadershipVoted(this.currentRole) &&
+      !this.allLeadersVoted()
     );
   }
 
@@ -129,20 +139,20 @@ class IrpfFormController {
       isSecretariat(this.currentRole) &&
       this.record.status === 'pending_leadership_approval' &&
       this.record.routedTo === this.currentRole &&
-      !this.bothLeadersApproved()
+      !this.allLeadersVoted()
     );
   }
 
   /* True once every assigned IRB Member has sent their review back to the Secretariat
    * with at least one Return (the unanimous-approval path escalates to leadership
-   * instead), or once both Co-Chairman and Chairman have signed off. */
+   * instead), or once both Co-Chairman and Chairman have cast their decision. */
   isPendingSecretariatCollation() {
     if (!isSecretariat(this.currentRole) || this.record.routedTo !== this.currentRole) return false;
     if (this.record.status === 'under_review') {
       return this.allAssignedMembersVoted() && !this.unanimousMemberApproval();
     }
     if (this.record.status === 'pending_leadership_approval') {
-      return this.bothLeadersApproved();
+      return this.allLeadersVoted();
     }
     return false;
   }
@@ -212,26 +222,35 @@ class IrpfFormController {
     return { ok: true };
   }
 
-  approveAsLeadership(comment) {
+  castLeadershipVote(decision, comment) {
     if (!isIrbLeadership(this.currentRole)) {
-      return { ok: false, error: 'This IRPF was not routed to you for approval.' };
+      return { ok: false, error: 'This IRPF was not routed to you for review.' };
     }
-    if (this.hasLeadershipApproved(this.currentRole)) {
-      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already approved this IRPF.` };
+    if (!decision) {
+      return { ok: false, error: 'Select Approve or Return.' };
+    }
+    if (decision === 'Return' && !(comment || '').trim()) {
+      return { ok: false, error: 'A comment is required when returning for revision.' };
+    }
+    if (this.hasLeadershipVoted(this.currentRole)) {
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IRPF.` };
     }
 
     this.record.leadershipApprovals = this.getLeadershipApprovals();
-    this.record.leadershipApprovals.push({
+    const approval = {
       approverId: this.currentRole,
       approverName: getRoleLabel(this.currentRole),
+      decision,
+      comment: (comment || '').trim(),
       timestamp: new Date().toISOString(),
-    });
+    };
+    this.record.leadershipApprovals.push(approval);
 
     saveSubmission(this.record, {
-      action: 'leadership_approve',
+      action: 'leadership_vote',
       actor: this.currentRole,
       status: this.record.status,
-      note: comment && comment.trim() ? comment.trim() : `${getRoleLabel(this.currentRole)} approved.`,
+      note: `${approval.approverName}: ${decision}${approval.comment ? ' — ' + approval.comment : ''}`,
     });
     return { ok: true };
   }

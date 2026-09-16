@@ -85,13 +85,17 @@
     </div>
 
     <div id="leadership-approval-panel" class="triage-panel" hidden>
-      <h2>Your Approval</h2>
-      <p class="triage-hint">Approving as <strong id="leadership-identity"></strong></p>
-      <label for="leadership-comment">Comment (optional)</label>
+      <h2>Your Review</h2>
+      <p class="triage-hint">Reviewing as <strong id="leadership-identity"></strong></p>
+      <div class="radio-group vote-decision-group">
+        <label class="radio-option"><input type="radio" name="leadershipDecision" value="Approve" /> Approve</label>
+        <label class="radio-option"><input type="radio" name="leadershipDecision" value="Return" /> Return for Revision</label>
+      </div>
+      <label for="leadership-comment">Comment</label>
       <textarea id="leadership-comment" rows="3"></textarea>
       <div id="leadership-error" class="field-error"></div>
       <div class="triage-actions">
-        <button id="btn-leadership-approve" type="button" class="btn btn-primary">Approve</button>
+        <button id="btn-leadership-vote" type="button" class="btn btn-primary">Submit Review</button>
       </div>
     </div>
 

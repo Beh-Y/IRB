@@ -150,10 +150,18 @@ function renderLeadershipSummary(controller) {
   container.hidden = false;
 
   const approvals = controller.getLeadershipApprovals();
-  const chip = document.createElement('span');
-  chip.className = 'tally-chip tally-chip--approve';
-  chip.textContent = `${approvals.length} of ${IRB_LEADERSHIP_IDS.length} approved`;
-  tallyEl.appendChild(chip);
+  const tally = controller.leadershipTally();
+  const chips = [
+    { text: `${tally.total} of ${tally.leadershipTotal} reviewed`, cls: '' },
+    { text: `${tally.approveCount} Approve`, cls: 'tally-chip--approve' },
+    { text: `${tally.returnCount} Return`, cls: 'tally-chip--return' },
+  ];
+  chips.forEach((c) => {
+    const chip = document.createElement('span');
+    chip.className = `tally-chip ${c.cls}`;
+    chip.textContent = c.text;
+    tallyEl.appendChild(chip);
+  });
 
   IRB_LEADERSHIP_IDS.forEach((id) => {
     const approval = approvals.find((a) => a.approverId === id);
@@ -161,11 +169,17 @@ function renderLeadershipSummary(controller) {
     const meta = document.createElement('div');
     meta.className = 'activity-meta';
     if (approval) {
-      meta.textContent = `${new Date(approval.timestamp).toLocaleString()} — ${approval.approverName} — Approved`;
+      meta.textContent = `${new Date(approval.timestamp).toLocaleString()} — ${approval.approverName} — ${approval.decision}`;
     } else {
       meta.textContent = `${getRoleLabel(id)} — Pending`;
     }
     li.appendChild(meta);
+    if (approval && approval.comment) {
+      const note = document.createElement('div');
+      note.className = 'activity-note';
+      note.textContent = approval.comment;
+      li.appendChild(note);
+    }
     list.appendChild(li);
   });
 }
@@ -183,7 +197,11 @@ function describeApprovedOutcome(record) {
 function renderCollateHint(controller) {
   const hint = document.getElementById('collate-hint');
   if (controller.record.status === 'pending_leadership_approval') {
-    hint.textContent = 'The Co-Chairman and Chairman have both approved. Choose the final outcome below.';
+    const tally = controller.leadershipTally();
+    hint.textContent =
+      `The Co-Chairman and Chairman have both reviewed this IRPF: ` +
+      `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
+      'Choose the final outcome below.';
     return;
   }
   const tally = controller.voteTally();
@@ -235,7 +253,7 @@ function initIrpfPage() {
   const leadershipIdentityEl = document.getElementById('leadership-identity');
   const leadershipCommentInput = document.getElementById('leadership-comment');
   const leadershipError = document.getElementById('leadership-error');
-  const leadershipApproveBtn = document.getElementById('btn-leadership-approve');
+  const leadershipVoteBtn = document.getElementById('btn-leadership-vote');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
@@ -283,15 +301,15 @@ function initIrpfPage() {
   } else if (controller.isPendingLeadershipApproval()) {
     leadershipApprovalPanel.hidden = false;
     leadershipIdentityEl.textContent = getRoleLabel(role);
-    showBanner('Review the IRPF below, then record your approval.', 'info');
+    showBanner('Review the IRPF below, then submit your decision.', 'info');
   } else if (controller.isLeadershipWaitingOnOther()) {
     const otherName = getRoleLabel(IRB_LEADERSHIP_IDS.find((id) => id !== role));
-    showBanner(`You've approved. Waiting on ${otherName}.`, 'info');
+    showBanner(`You've submitted your review. Waiting on ${otherName}.`, 'info');
   } else if (controller.isAwaitingLeadershipApproval()) {
-    const pending = IRB_LEADERSHIP_IDS.filter((id) => !controller.hasLeadershipApproved(id))
+    const pending = IRB_LEADERSHIP_IDS.filter((id) => !controller.hasLeadershipVoted(id))
       .map((id) => getRoleLabel(id))
       .join(', ');
-    showBanner(`Waiting on approval from: ${pending}.`, 'info');
+    showBanner(`Waiting on review from: ${pending}.`, 'info');
   } else if (record.status === 'pending_director_approval') {
     showBanner('Awaiting S/D Director approval before this IRPF can proceed.', 'info');
   } else if (record.status === 'pending_review') {
@@ -385,18 +403,20 @@ function initIrpfPage() {
     showBanner('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
   });
 
-  leadershipApproveBtn.addEventListener('click', () => {
-    const result = controller.approveAsLeadership(leadershipCommentInput.value);
+  leadershipVoteBtn.addEventListener('click', () => {
+    const decisionEl = leadershipApprovalPanel.querySelector('input[name="leadershipDecision"]:checked');
+    const result = controller.castLeadershipVote(decisionEl ? decisionEl.value : null, leadershipCommentInput.value);
     if (!result.ok) {
       leadershipError.textContent = result.error;
       return;
     }
     leadershipError.textContent = '';
     leadershipCommentInput.value = '';
+    leadershipApprovalPanel.querySelectorAll('input[name="leadershipDecision"]').forEach((r) => (r.checked = false));
     renderLeadershipSummary(controller);
     renderActivityLog(record);
     leadershipApprovalPanel.hidden = true;
-    showBanner('Approval recorded. Thank you.', 'success');
+    showBanner('Review recorded. Thank you.', 'success');
   });
 
   function handleCollateDecision(action) {

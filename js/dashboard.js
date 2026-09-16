@@ -9,6 +9,18 @@ function formatIsoDate(isoDate) {
   return `${day}-${months[Number(month) - 1]}-${year}`;
 }
 
+/* Sort key for "IRB-MM-YYYY-XXX" that orders chronologically (year, then
+ * month, then sequence) -- a plain string compare gets this wrong whenever
+ * a later year has an earlier-looking month digit (e.g. "IRB-09-2025-005"
+ * vs "IRB-01-2026-001"). Returns null for a record with no reference number
+ * yet (an unsaved draft). */
+function refNumberSortKey(refNumber) {
+  const match = /^IRB-(\d{2})-(\d{4})-(\d{3})$/.exec(refNumber || '');
+  if (!match) return null;
+  const [, mm, yyyy, xxx] = match;
+  return Number(yyyy) * 100000 + Number(mm) * 1000 + Number(xxx);
+}
+
 function needsActionFromCurrentRole(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
   if (role === 'irb-admin-edu' || role === 'irb-admin-tie') {
@@ -58,9 +70,18 @@ function renderDashboard() {
     window.location.href = 'irpf.html';
   });
 
-  const submissions = getSubmissionsByType('IRPF').sort(
-    (a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0)
-  );
+  const submissions = getSubmissionsByType('IRPF').sort((a, b) => {
+    const keyA = refNumberSortKey(a.data.refNumber);
+    const keyB = refNumberSortKey(b.data.refNumber);
+    // A record with no reference number yet is a brand-new, unsaved draft --
+    // treat it as the newest and put it first.
+    if (keyA === null && keyB === null) {
+      return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+    }
+    if (keyA === null) return -1;
+    if (keyB === null) return 1;
+    return keyB - keyA;
+  });
 
   const tbody = document.getElementById('submissions-body');
   tbody.innerHTML = '';

@@ -1,16 +1,44 @@
 /* Renders the IRPF submissions list on index.html, scoped to the current preview role. */
 
-function underReviewReadyToCollate(record) {
+function assignedVotesAllIn(record) {
   const votes = record.votes || [];
   const assigned = record.assignedMembers || [];
   return assigned.length > 0 && assigned.every((id) => votes.some((v) => v.voterId === id));
+}
+
+function assignedVotesUnanimousApproval(record) {
+  const votes = record.votes || [];
+  const assigned = record.assignedMembers || [];
+  return (
+    assigned.length > 0 &&
+    assigned.every((id) => {
+      const vote = votes.find((v) => v.voterId === id);
+      return vote && vote.decision === 'Approve';
+    })
+  );
+}
+
+function underReviewReadyToCollate(record) {
+  return assignedVotesAllIn(record) && !assignedVotesUnanimousApproval(record);
+}
+
+function underReviewReadyToRouteToLeadership(record) {
+  return assignedVotesAllIn(record) && assignedVotesUnanimousApproval(record);
+}
+
+function leadershipReadyToCollate(record) {
+  const approvals = record.leadershipApprovals || [];
+  return IRB_LEADERSHIP_IDS.every((id) => approvals.some((a) => a.approverId === id));
 }
 
 function needsActionFromCurrentRole(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
   if (role === 'irb-admin-edu' || role === 'irb-admin-tie') {
     if (record.status === 'pending_review') return record.routedTo === role;
-    if (record.status === 'under_review') return record.routedTo === role && underReviewReadyToCollate(record);
+    if (record.status === 'under_review') {
+      return record.routedTo === role && (underReviewReadyToCollate(record) || underReviewReadyToRouteToLeadership(record));
+    }
+    if (record.status === 'pending_leadership_approval') return record.routedTo === role && leadershipReadyToCollate(record);
     return false;
   }
   if (isIrbMember(role)) {
@@ -18,6 +46,12 @@ function needsActionFromCurrentRole(record, role) {
       record.status === 'under_review' &&
       (record.assignedMembers || []).includes(role) &&
       !(record.votes || []).some((v) => v.voterId === role)
+    );
+  }
+  if (isIrbLeadership(role)) {
+    return (
+      record.status === 'pending_leadership_approval' &&
+      !(record.leadershipApprovals || []).some((a) => a.approverId === role)
     );
   }
   if (role === 'pi') return record.status === 'for_revision';

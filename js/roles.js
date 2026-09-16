@@ -9,11 +9,16 @@ const ROLES = [
   { id: 'irb-member-1', label: 'IRB Member 1', group: 'SP Staff' },
   { id: 'irb-member-2', label: 'IRB Member 2', group: 'SP Staff' },
   { id: 'irb-member-3', label: 'IRB Member 3', group: 'SP Staff' },
+  { id: 'irb-co-chairman', label: 'IRB Co-Chairman', group: 'SP Staff' },
+  { id: 'irb-chairman', label: 'IRB Chairman', group: 'SP Staff' },
   { id: 'system-admin', label: 'INDT / System Admin', group: 'SP Staff' },
 ];
 
 /* The selectable IRB Member personas, in the order the Secretariat assigns them. */
 const IRB_MEMBER_IDS = ['irb-member-1', 'irb-member-2', 'irb-member-3'];
+
+/* Fixed IRB leadership roles who sign off after unanimous member approval. */
+const IRB_LEADERSHIP_IDS = ['irb-co-chairman', 'irb-chairman'];
 
 const ROLES_STORAGE_KEY = 'irb_current_role';
 
@@ -36,6 +41,10 @@ function isSecretariat(roleId) {
 
 function isIrbMember(roleId) {
   return IRB_MEMBER_IDS.includes(roleId);
+}
+
+function isIrbLeadership(roleId) {
+  return IRB_LEADERSHIP_IDS.includes(roleId);
 }
 
 /* EDU category routes to the EDU secretariat; Biomedical/Others route to TIE. */

@@ -19,6 +19,7 @@ function loadOrCreateRecord() {
     history: [],
     votes: [],
     assignedMembers: [],
+    leadershipApprovals: [],
     createdAt: null,
     updatedAt: null,
     routedTo: null,
@@ -133,6 +134,42 @@ function renderVotingSummary(controller) {
   });
 }
 
+function renderLeadershipSummary(controller) {
+  const container = document.getElementById('leadership-summary');
+  const list = document.getElementById('leadership-approvals-list');
+  const tallyEl = document.getElementById('leadership-tally');
+  list.innerHTML = '';
+  tallyEl.innerHTML = '';
+
+  const record = controller.record;
+  const everReached = record.status === 'pending_leadership_approval' || controller.getLeadershipApprovals().length > 0;
+  if (!everReached) {
+    container.hidden = true;
+    return;
+  }
+  container.hidden = false;
+
+  const approvals = controller.getLeadershipApprovals();
+  const chip = document.createElement('span');
+  chip.className = 'tally-chip tally-chip--approve';
+  chip.textContent = `${approvals.length} of ${IRB_LEADERSHIP_IDS.length} approved`;
+  tallyEl.appendChild(chip);
+
+  IRB_LEADERSHIP_IDS.forEach((id) => {
+    const approval = approvals.find((a) => a.approverId === id);
+    const li = document.createElement('li');
+    const meta = document.createElement('div');
+    meta.className = 'activity-meta';
+    if (approval) {
+      meta.textContent = `${new Date(approval.timestamp).toLocaleString()} — ${approval.approverName} — Approved`;
+    } else {
+      meta.textContent = `${getRoleLabel(id)} — Pending`;
+    }
+    li.appendChild(meta);
+    list.appendChild(li);
+  });
+}
+
 function describeApprovedOutcome(record) {
   if (record.reviewOutcome === 'exemption') {
     return 'This IRPF was approved for exemption. No IPAF submission is required.';
@@ -145,6 +182,10 @@ function describeApprovedOutcome(record) {
 
 function renderCollateHint(controller) {
   const hint = document.getElementById('collate-hint');
+  if (controller.record.status === 'pending_leadership_approval') {
+    hint.textContent = 'The Co-Chairman and Chairman have both approved. Choose the final outcome below.';
+    return;
+  }
   const tally = controller.voteTally();
   hint.textContent =
     `All ${tally.assignedTotal} assigned member(s) have reviewed this IRPF: ` +
@@ -163,6 +204,7 @@ function initIrpfPage() {
   controller.mount(document.getElementById('irpf-form-container'));
   renderActivityLog(record);
   renderVotingSummary(controller);
+  renderLeadershipSummary(controller);
   renderTriageMemberCheckboxes(record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
@@ -186,6 +228,14 @@ function initIrpfPage() {
   const createIpafBtn = document.getElementById('btn-create-ipaf');
   const piCommentPanel = document.getElementById('pi-comment-panel');
   const piCommentInput = document.getElementById('pi-comment');
+  const routeToLeadershipPanel = document.getElementById('route-to-leadership-panel');
+  const routeLeadershipCommentInput = document.getElementById('route-leadership-comment');
+  const routeToLeadershipBtn = document.getElementById('btn-route-to-leadership');
+  const leadershipApprovalPanel = document.getElementById('leadership-approval-panel');
+  const leadershipIdentityEl = document.getElementById('leadership-identity');
+  const leadershipCommentInput = document.getElementById('leadership-comment');
+  const leadershipError = document.getElementById('leadership-error');
+  const leadershipApproveBtn = document.getElementById('btn-leadership-approve');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
@@ -194,6 +244,8 @@ function initIrpfPage() {
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
   piCommentPanel.hidden = true;
+  routeToLeadershipPanel.hidden = true;
+  leadershipApprovalPanel.hidden = true;
 
   if (controller.isEditableByPi()) {
     saveBtn.hidden = false;
@@ -213,6 +265,8 @@ function initIrpfPage() {
   } else if (controller.isPendingSecretariatCollation()) {
     collatePanel.hidden = false;
     renderCollateHint(controller);
+  } else if (controller.isPendingSecretariatRouteToLeadership()) {
+    routeToLeadershipPanel.hidden = false;
   } else if (controller.isAwaitingMemberReview()) {
     const pending = controller
       .getAssignedMembers()
@@ -226,6 +280,18 @@ function initIrpfPage() {
     showBanner('Review the IRPF below, then cast your vote.', 'info');
   } else if (controller.isUnassignedMemberViewingUnderReview()) {
     showBanner('This IRPF is under review but was not routed to you.', 'muted');
+  } else if (controller.isPendingLeadershipApproval()) {
+    leadershipApprovalPanel.hidden = false;
+    leadershipIdentityEl.textContent = getRoleLabel(role);
+    showBanner('Review the IRPF below, then record your approval.', 'info');
+  } else if (controller.isLeadershipWaitingOnOther()) {
+    const otherName = getRoleLabel(IRB_LEADERSHIP_IDS.find((id) => id !== role));
+    showBanner(`You've approved. Waiting on ${otherName}.`, 'info');
+  } else if (controller.isAwaitingLeadershipApproval()) {
+    const pending = IRB_LEADERSHIP_IDS.filter((id) => !controller.hasLeadershipApproved(id))
+      .map((id) => getRoleLabel(id))
+      .join(', ');
+    showBanner(`Waiting on approval from: ${pending}.`, 'info');
   } else if (record.status === 'pending_director_approval') {
     showBanner('Awaiting S/D Director approval before this IRPF can proceed.', 'info');
   } else if (record.status === 'pending_review') {
@@ -234,6 +300,8 @@ function initIrpfPage() {
     showBanner('Returned for amendments. Awaiting the PI to address the comments and resubmit.', 'info');
   } else if (record.status === 'under_review') {
     showBanner('Routed to the IRB Member panel for review. Awaiting their feedback.', 'info');
+  } else if (record.status === 'pending_leadership_approval') {
+    showBanner('Routed to the IRB Co-Chairman and Chairman for approval. Awaiting their decision.', 'info');
   } else if (record.status === 'approved') {
     showBanner(describeApprovedOutcome(record), 'success');
   } else if (record.status === 'draft') {
@@ -306,6 +374,29 @@ function initIrpfPage() {
     renderActivityLog(record);
     voteFormPanel.hidden = true;
     showBanner('Vote recorded. Thank you.', 'success');
+  });
+
+  routeToLeadershipBtn.addEventListener('click', () => {
+    controller.routeToLeadershipApproval(routeLeadershipCommentInput.value);
+    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
+    renderActivityLog(record);
+    renderLeadershipSummary(controller);
+    routeToLeadershipPanel.hidden = true;
+    showBanner('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+  });
+
+  leadershipApproveBtn.addEventListener('click', () => {
+    const result = controller.approveAsLeadership(leadershipCommentInput.value);
+    if (!result.ok) {
+      leadershipError.textContent = result.error;
+      return;
+    }
+    leadershipError.textContent = '';
+    leadershipCommentInput.value = '';
+    renderLeadershipSummary(controller);
+    renderActivityLog(record);
+    leadershipApprovalPanel.hidden = true;
+    showBanner('Approval recorded. Thank you.', 'success');
   });
 
   function handleCollateDecision(action) {

@@ -63,6 +63,38 @@
       </div>
     </div>
 
+    <div id="route-to-leadership-panel" class="triage-panel" hidden>
+      <h2>Secretariat Review</h2>
+      <p class="triage-hint">
+        All assigned IRB Members approved. Route this IRPF to the Co-Chairman and Chairman for their approval before
+        recording the final outcome.
+      </p>
+      <label for="route-leadership-comment">Comment (optional)</label>
+      <textarea id="route-leadership-comment" rows="3"></textarea>
+      <div class="triage-actions">
+        <button id="btn-route-to-leadership" type="button" class="btn btn-primary">
+          Route to Co-Chairman &amp; Chairman for Approval
+        </button>
+      </div>
+    </div>
+
+    <div id="leadership-summary" class="activity-log" hidden>
+      <h2>IRB Leadership Approval</h2>
+      <div id="leadership-tally" class="voting-tally"></div>
+      <ul id="leadership-approvals-list"></ul>
+    </div>
+
+    <div id="leadership-approval-panel" class="triage-panel" hidden>
+      <h2>Your Approval</h2>
+      <p class="triage-hint">Approving as <strong id="leadership-identity"></strong></p>
+      <label for="leadership-comment">Comment (optional)</label>
+      <textarea id="leadership-comment" rows="3"></textarea>
+      <div id="leadership-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-leadership-approve" type="button" class="btn btn-primary">Approve</button>
+      </div>
+    </div>
+
     <div id="collate-panel" class="triage-panel" hidden>
       <h2>Secretariat Decision</h2>
       <p id="collate-hint" class="triage-hint"></p>

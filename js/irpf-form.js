@@ -72,14 +72,79 @@ class IrpfFormController {
     return assigned.length > 0 && assigned.every((memberId) => this.hasVoted(memberId));
   }
 
-  /* True once every assigned IRB Member has sent their review back to the Secretariat. */
-  isPendingSecretariatCollation() {
+  /* True once every assigned member approved (vs. at least one Return). */
+  unanimousMemberApproval() {
+    const assigned = this.getAssignedMembers();
+    return (
+      assigned.length > 0 &&
+      assigned.every((memberId) => {
+        const vote = this.getVotes().find((v) => v.voterId === memberId);
+        return vote && vote.decision === 'Approve';
+      })
+    );
+  }
+
+  getLeadershipApprovals() {
+    return this.record.leadershipApprovals || [];
+  }
+
+  hasLeadershipApproved(roleId) {
+    return this.getLeadershipApprovals().some((a) => a.approverId === roleId);
+  }
+
+  bothLeadersApproved() {
+    return IRB_LEADERSHIP_IDS.every((id) => this.hasLeadershipApproved(id));
+  }
+
+  /* Secretariat's action once members unanimously approve: escalate to leadership. */
+  isPendingSecretariatRouteToLeadership() {
     return (
       isSecretariat(this.currentRole) &&
       this.record.status === 'under_review' &&
       this.record.routedTo === this.currentRole &&
-      this.allAssignedMembersVoted()
+      this.allAssignedMembersVoted() &&
+      this.unanimousMemberApproval()
     );
+  }
+
+  isPendingLeadershipApproval() {
+    return (
+      isIrbLeadership(this.currentRole) &&
+      this.record.status === 'pending_leadership_approval' &&
+      !this.hasLeadershipApproved(this.currentRole)
+    );
+  }
+
+  isLeadershipWaitingOnOther() {
+    return (
+      isIrbLeadership(this.currentRole) &&
+      this.record.status === 'pending_leadership_approval' &&
+      this.hasLeadershipApproved(this.currentRole) &&
+      !this.bothLeadersApproved()
+    );
+  }
+
+  isAwaitingLeadershipApproval() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'pending_leadership_approval' &&
+      this.record.routedTo === this.currentRole &&
+      !this.bothLeadersApproved()
+    );
+  }
+
+  /* True once every assigned IRB Member has sent their review back to the Secretariat
+   * with at least one Return (the unanimous-approval path escalates to leadership
+   * instead), or once both Co-Chairman and Chairman have signed off. */
+  isPendingSecretariatCollation() {
+    if (!isSecretariat(this.currentRole) || this.record.routedTo !== this.currentRole) return false;
+    if (this.record.status === 'under_review') {
+      return this.allAssignedMembersVoted() && !this.unanimousMemberApproval();
+    }
+    if (this.record.status === 'pending_leadership_approval') {
+      return this.bothLeadersApproved();
+    }
+    return false;
   }
 
   isAwaitingMemberReview() {
@@ -130,6 +195,43 @@ class IrpfFormController {
       actor: this.currentRole,
       status: this.record.status,
       note: `${vote.voterName}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`,
+    });
+    return { ok: true };
+  }
+
+  /* Secretariat escalates a unanimously-approved IRPF to the Co-Chairman and Chairman. */
+  routeToLeadershipApproval(comment) {
+    this.record.status = 'pending_leadership_approval';
+    this.record.leadershipApprovals = [];
+    saveSubmission(this.record, {
+      action: 'routed_to_leadership',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment || 'Routed to the IRB Co-Chairman and Chairman for approval.',
+    });
+    return { ok: true };
+  }
+
+  approveAsLeadership(comment) {
+    if (!isIrbLeadership(this.currentRole)) {
+      return { ok: false, error: 'This IRPF was not routed to you for approval.' };
+    }
+    if (this.hasLeadershipApproved(this.currentRole)) {
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already approved this IRPF.` };
+    }
+
+    this.record.leadershipApprovals = this.getLeadershipApprovals();
+    this.record.leadershipApprovals.push({
+      approverId: this.currentRole,
+      approverName: getRoleLabel(this.currentRole),
+      timestamp: new Date().toISOString(),
+    });
+
+    saveSubmission(this.record, {
+      action: 'leadership_approve',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment && comment.trim() ? comment.trim() : `${getRoleLabel(this.currentRole)} approved.`,
     });
     return { ok: true };
   }

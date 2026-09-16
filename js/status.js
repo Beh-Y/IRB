@@ -6,6 +6,7 @@ const STATUS_LABELS = {
   pending_review: 'Pending Review',
   for_revision: 'For Revision',
   under_review: 'Under Review',
+  pending_leadership_approval: 'Pending Chairman Approval',
   approved: 'Approved',
 };
 

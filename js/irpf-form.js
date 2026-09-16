@@ -399,11 +399,7 @@ class IrpfFormController {
       const list = document.createElement('ul');
       list.className = 'file-list';
       list.id = `${field.id}-list`;
-      (currentValue || []).forEach((f) => {
-        const li = document.createElement('li');
-        li.textContent = `${f.name} (${Math.round(f.size / 1024)} KB)`;
-        list.appendChild(li);
-      });
+      this.renderFileList(field, list);
       controlWrap.appendChild(list);
       return input;
     }
@@ -411,18 +407,49 @@ class IrpfFormController {
     return null;
   }
 
-  onFileChanged(field, input) {
-    const meta = Array.from(input.files).map((f) => ({ name: f.name, size: f.size, type: f.type }));
-    this.record.data[field.id] = meta;
-
-    const list = document.getElementById(`${field.id}-list`);
+  /* Files already recorded for this field, each with a Remove link so the PI
+   * can drop one without losing the rest. */
+  renderFileList(field, list) {
+    const disabled = !this.isEditableByPi();
     list.innerHTML = '';
-    meta.forEach((f) => {
+    (this.record.data[field.id] || []).forEach((f, index) => {
       const li = document.createElement('li');
       li.textContent = `${f.name} (${Math.round(f.size / 1024)} KB)`;
+      if (!disabled) {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'file-remove-btn';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => this.removeFile(field, index));
+        li.appendChild(removeBtn);
+      }
       list.appendChild(li);
     });
+  }
 
+  removeFile(field, index) {
+    const files = this.record.data[field.id] || [];
+    files.splice(index, 1);
+    this.record.data[field.id] = files;
+    this.renderFileList(field, document.getElementById(`${field.id}-list`));
+    this.refreshAll();
+  }
+
+  /* Selecting files again adds to what's already been uploaded for this
+   * field instead of replacing it -- a fresh file dialog only ever reports
+   * the files picked in that dialog, so without this the previous batch
+   * would be lost. */
+  onFileChanged(field, input) {
+    const newFiles = Array.from(input.files).map((f) => ({ name: f.name, size: f.size, type: f.type }));
+    const existing = this.record.data[field.id] || [];
+    const merged = field.multiple ? existing.slice() : [];
+    newFiles.forEach((f) => {
+      if (!merged.some((m) => m.name === f.name && m.size === f.size)) merged.push(f);
+    });
+    this.record.data[field.id] = merged;
+    input.value = '';
+
+    this.renderFileList(field, document.getElementById(`${field.id}-list`));
     this.refreshAll();
   }
 

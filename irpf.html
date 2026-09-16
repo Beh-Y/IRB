@@ -27,8 +27,8 @@
     <div id="triage-panel" class="triage-panel" hidden>
       <h2>Secretariat Review</h2>
       <p class="triage-hint">
-        Route this IRPF to the IRB Member panel for review. Once they send their review back, you'll be able to
-        record the final outcome.
+        Route this IRPF to the IRB Member panel for review, or route it straight to the Co-Chairman and Chairman for
+        approval if a full member review isn't needed.
       </p>
       <label for="triage-comment">Comment (optional)</label>
       <textarea id="triage-comment" rows="3"></textarea>
@@ -39,6 +39,9 @@
       <div id="triage-error" class="field-error"></div>
       <div class="triage-actions">
         <button id="btn-route-to-members" type="button" class="btn btn-primary">Route to IRB Members for Review</button>
+        <button id="btn-triage-route-to-leadership" type="button" class="btn btn-secondary">
+          Route to Co-Chairman &amp; Chairman for Approval
+        </button>
       </div>
     </div>
 

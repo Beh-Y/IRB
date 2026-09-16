@@ -234,6 +234,7 @@ function initIrpfPage() {
   const triageComment = document.getElementById('triage-comment');
   const triageError = document.getElementById('triage-error');
   const routeToMembersBtn = document.getElementById('btn-route-to-members');
+  const triageRouteToLeadershipBtn = document.getElementById('btn-triage-route-to-leadership');
   const voteFormPanel = document.getElementById('vote-form-panel');
   const voterIdentityEl = document.getElementById('voter-identity');
   const voteCommentInput = document.getElementById('vote-comment');
@@ -380,6 +381,16 @@ function initIrpfPage() {
     triagePanel.hidden = true;
     const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
     showBanner(`Routed to ${names} for review.`, 'success');
+  });
+
+  triageRouteToLeadershipBtn.addEventListener('click', () => {
+    controller.routeToLeadershipApproval(triageComment.value);
+    triageError.textContent = '';
+    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
+    renderActivityLog(record);
+    renderLeadershipSummary(controller);
+    triagePanel.hidden = true;
+    showBanner('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
   });
 
   castVoteBtn.addEventListener('click', () => {

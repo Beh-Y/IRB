@@ -363,6 +363,17 @@ body {
   color: var(--color-text-muted);
 }
 
+.file-remove-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  padding: 0;
+  margin-left: 0.5rem;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .field-hint {
   font-size: 0.75rem;
   color: var(--color-text-muted);

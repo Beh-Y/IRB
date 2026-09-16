@@ -1,0 +1,576 @@
+:root {
+  --color-bg: #f5f6f8;
+  --color-surface: #ffffff;
+  --color-border: #d8dce1;
+  --color-text: #1f2937;
+  --color-text-muted: #6b7280;
+  --color-primary: #1d4ed8;
+  --color-primary-hover: #1e40af;
+  --color-success-bg: #ecfdf5;
+  --color-success-text: #047857;
+  --color-error-bg: #fef2f2;
+  --color-error-text: #b91c1c;
+  --color-info-bg: #eff6ff;
+  --color-info-text: #1e40af;
+  --color-muted-bg: #f3f4f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+}
+
+.header-title {
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.header-nav a {
+  color: var(--color-text-muted);
+  text-decoration: none;
+  margin-right: 1rem;
+  font-size: 0.9rem;
+}
+
+.header-nav a.active,
+.header-nav a:hover {
+  color: var(--color-primary);
+}
+
+.header-role-switcher {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.header-role-switcher select {
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1.5rem 1.5rem 4rem;
+}
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.page-header h1 {
+  font-size: 1.4rem;
+  margin: 0 0 0.35rem;
+}
+
+.page-header--spaced {
+  margin-top: 2.5rem;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  background: var(--color-muted-bg);
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.status-banner {
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  font-size: 0.9rem;
+}
+
+.status-banner--info {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.status-banner--success {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.status-banner--error {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.status-banner--muted {
+  background: var(--color-muted-bg);
+  color: var(--color-text-muted);
+}
+
+.activity-log {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 1rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.activity-log h2 {
+  font-size: 0.95rem;
+  margin: 0 0 0.6rem;
+  color: var(--color-text-muted);
+}
+
+.activity-log ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.activity-log li {
+  font-size: 0.85rem;
+  border-left: 3px solid var(--color-border);
+  padding: 0.15rem 0 0.15rem 0.7rem;
+}
+
+.activity-log .activity-meta {
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.activity-log .activity-note {
+  margin-top: 0.15rem;
+}
+
+.voting-tally {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.voting-tally .tally-chip {
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  background: var(--color-muted-bg);
+  color: var(--color-text-muted);
+}
+
+.voting-tally .tally-chip--approve {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.voting-tally .tally-chip--return {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.vote-decision-group {
+  margin: 0.4rem 0 0.9rem;
+}
+
+.triage-panel {
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.triage-panel h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.4rem;
+  color: var(--color-primary);
+}
+
+.triage-hint {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.triage-panel label {
+  font-size: 0.85rem;
+  display: block;
+  margin-bottom: 0.3rem;
+}
+
+.triage-panel textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.triage-hint-inline {
+  font-weight: normal;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 0.3rem 0 0.9rem;
+  font-size: 0.9rem;
+}
+
+.checkbox-group.stacked {
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.section-intro {
+  margin: 0 0 1rem;
+  padding-left: 1.2rem;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.section-intro li {
+  margin-bottom: 0.4rem;
+}
+
+.people-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.person-card {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.75rem;
+}
+
+.person-field-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.person-field-row label {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.person-field-row input {
+  width: 100%;
+}
+
+.person-card .file-remove-btn {
+  margin-left: 0;
+}
+
+.btn-small {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+}
+
+.checkbox-group label {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  margin-bottom: 0;
+}
+
+.triage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin-top: 0.9rem;
+}
+
+.form-container {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 0.5rem 1.5rem 1.5rem;
+}
+
+.form-section {
+  padding: 1.25rem 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.form-section:last-child {
+  border-bottom: none;
+}
+
+.form-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 1rem;
+  color: var(--color-primary);
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 320px) 1fr;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  align-items: start;
+}
+
+.field-row[hidden] {
+  display: none;
+}
+
+.field-row.has-error .field-control input,
+.field-row.has-error .field-control textarea {
+  border-color: var(--color-error-text);
+}
+
+.field-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  padding-top: 0.4rem;
+}
+
+.info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+  font-size: 0.7rem;
+  font-style: italic;
+  cursor: help;
+  flex-shrink: 0;
+}
+
+.field-control input[type="text"],
+.field-control input[type="date"],
+.field-control textarea {
+  width: 100%;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  font: inherit;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.field-control input:disabled,
+.field-control textarea:disabled {
+  background: var(--color-muted-bg);
+  color: var(--color-text-muted);
+}
+
+.field-display {
+  padding: 0.5rem 0.6rem;
+  background: var(--color-muted-bg);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  color: var(--color-text);
+}
+
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+}
+
+.file-list {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 0.82rem;
+  color: var(--color-text-muted);
+}
+
+.file-list a {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.file-remove-btn {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  padding: 0;
+  margin-left: 0.5rem;
+  font-size: 0.82rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.field-hint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-top: 0.3rem;
+}
+
+.field-error {
+  font-size: 0.78rem;
+  color: var(--color-error-text);
+  margin-top: 0.2rem;
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.btn {
+  padding: 0.55rem 1.1rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--color-primary-hover);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  color: var(--color-text);
+}
+
+.btn-tertiary {
+  background: transparent;
+  color: var(--color-text-muted);
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: var(--color-primary);
+  padding: 0;
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.submissions-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.submissions-table th,
+.submissions-table td {
+  text-align: left;
+  padding: 0.6rem 0.9rem;
+  border-bottom: 1px solid var(--color-border);
+  font-size: 0.88rem;
+}
+
+.submissions-table th {
+  background: var(--color-muted-bg);
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.submissions-table tr.needs-action {
+  background: #fffbeb;
+}
+
+/* Indents an IPAF row's reference number, since it's grouped directly under
+ * its parent IRPF row rather than sorted independently. */
+.submissions-table tr.child-row td:first-child {
+  padding-left: 1.8rem;
+  position: relative;
+}
+
+.submissions-table tr.child-row td:first-child::before {
+  content: '↳';
+  position: absolute;
+  left: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+/* Shows the first 5 rows, scrolling for the rest, while keeping the header
+ * fixed -- splits the table into two independently-laid-out tables (head vs
+ * body) with matching column widths, since a scrolling <tbody> can't keep
+ * a <thead> in a single table in view otherwise. */
+.submissions-table-scroll .submissions-table {
+  display: block;
+}
+
+.submissions-table-scroll thead,
+.submissions-table-scroll tbody tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.submissions-table-scroll tbody {
+  display: block;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+.action-badge {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border-radius: 999px;
+  background: #fde68a;
+  color: #92400e;
+  font-size: 0.72rem;
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 2rem 0;
+}
+
+@media (max-width: 640px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}

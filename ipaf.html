@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>IPAF – IRB Protocol Application Form</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <div>
+        <h1>IRB Protocol Application Form (IPAF)</h1>
+        <span id="ipaf-status-badge" class="status-badge"></span>
+      </div>
+      <a id="link-back-to-irpf" class="btn btn-link">Back to parent IRPF</a>
+    </div>
+
+    <div id="status-banner" class="status-banner" hidden></div>
+
+    <div id="activity-log" class="activity-log" hidden>
+      <h2>Activity</h2>
+      <ul id="activity-log-list"></ul>
+    </div>
+
+    <div id="triage-panel" class="triage-panel" hidden>
+      <h2>Secretariat Review</h2>
+      <p class="triage-hint">
+        Route this IPAF to the IRB Member panel for review. Once they send their review back, you'll be able to
+        record the final outcome.
+      </p>
+      <label for="triage-comment">Comment (optional)</label>
+      <textarea id="triage-comment" rows="3"></textarea>
+
+      <label>Route to IRB Members</label>
+      <div id="triage-member-checkboxes" class="checkbox-group"></div>
+
+      <div id="triage-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-route-to-members" type="button" class="btn btn-primary">Route to IRB Members for Review</button>
+      </div>
+    </div>
+
+    <div id="voting-summary" class="activity-log" hidden>
+      <h2>IRB Member Panel</h2>
+      <div id="voting-tally" class="voting-tally"></div>
+      <ul id="votes-list"></ul>
+    </div>
+
+    <div id="vote-form-panel" class="triage-panel" hidden>
+      <h2>Cast Your Vote</h2>
+      <p class="triage-hint">Voting as <strong id="voter-identity"></strong></p>
+      <div class="radio-group vote-decision-group">
+        <label class="radio-option"><input type="radio" name="voteDecision" value="Approve" /> Approve</label>
+        <label class="radio-option"><input type="radio" name="voteDecision" value="Return" /> Return for Revision</label>
+      </div>
+      <label for="vote-comment">Comment</label>
+      <textarea id="vote-comment" rows="3"></textarea>
+      <div id="vote-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-cast-vote" type="button" class="btn btn-primary">Submit Vote</button>
+      </div>
+    </div>
+
+    <div id="collate-panel" class="triage-panel" hidden>
+      <h2>Secretariat Decision</h2>
+      <p id="collate-hint" class="triage-hint"></p>
+      <label for="collate-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
+      <textarea id="collate-comment" rows="3"></textarea>
+      <div id="collate-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-approve-ipaf" type="button" class="btn btn-primary">Approve</button>
+        <button id="btn-return-amendments" type="button" class="btn btn-secondary">Returned for Amendments</button>
+      </div>
+    </div>
+
+    <div id="pi-comment-panel" class="triage-panel" hidden>
+      <h2>Your Response</h2>
+      <p class="triage-hint">Let the reviewers know how you've addressed their comments (see Activity above).</p>
+      <label for="pi-comment">Comment (optional)</label>
+      <textarea id="pi-comment" rows="3"></textarea>
+    </div>
+
+    <div id="acknowledge-panel" class="triage-panel" hidden>
+      <h2>Acknowledge Approval</h2>
+      <p class="triage-hint">
+        This IPAF has been approved. Please confirm your understanding of your responsibilities as a Principal
+        Investigator.
+      </p>
+      <div class="triage-actions">
+        <button id="btn-acknowledge" type="button" class="btn btn-primary">Acknowledge</button>
+      </div>
+    </div>
+
+    <div id="ipaf-form-container" class="form-container"></div>
+
+    <div class="form-actions">
+      <button id="btn-save" type="button" class="btn btn-secondary">Save</button>
+      <button id="btn-submit" type="button" class="btn btn-primary">Submit</button>
+      <button id="btn-approve" type="button" class="btn btn-primary">Approve</button>
+      <button id="btn-close" type="button" class="btn btn-tertiary">Close</button>
+    </div>
+  </main>
+
+  <script src="js/error-guard.js"></script>
+  <script src="js/roles.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/refnumber.js"></script>
+  <script src="js/status.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/form-utils.js"></script>
+  <script src="js/ipaf-schema.js"></script>
+  <script src="js/ipaf-form.js"></script>
+  <script src="js/ipaf-page.js"></script>
+</body>
+</html>

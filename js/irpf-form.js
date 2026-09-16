@@ -449,7 +449,10 @@ class IrpfFormController {
         li.appendChild(link);
       } else {
         // Uploaded before file content was persisted -- nothing to open.
-        li.appendChild(document.createTextNode(label));
+        // Say so plainly instead of showing what looks like a broken link.
+        li.appendChild(
+          document.createTextNode(`${label} — uploaded before file previews were supported; no content to open`)
+        );
       }
       if (!disabled) {
         const removeBtn = document.createElement('button');

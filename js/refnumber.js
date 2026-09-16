@@ -37,3 +37,11 @@ function generateIPAFReferenceNumber(onDate, category) {
   const suffix = IPAF_SUFFIX_BY_CATEGORY[category] || 'PAOTH';
   return `IRB-${mm}-${yyyy}-${xxx}-${suffix}`;
 }
+
+function generatePCDFReferenceNumber(onDate) {
+  const date = onDate instanceof Date ? onDate : new Date();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const yyyy = String(date.getFullYear());
+  const xxx = nextSequenceInPeriod('PCDF', mm, yyyy);
+  return `PCDF-${mm}-${yyyy}-${xxx}`;
+}

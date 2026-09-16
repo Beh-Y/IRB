@@ -18,6 +18,7 @@ const STATUS_LABELS = {
 
 const STATUS_LABEL_OVERRIDES_BY_FORM_TYPE = {
   IPAF: { approved: 'Approved' },
+  PCDF: { approved: 'Approved' },
 };
 
 function getStatusLabel(status, formType) {

@@ -53,13 +53,18 @@ class IrpfFormController {
 
   /* A member can cast their vote as soon as they're assigned, whether or not
    * the Secretariat has already acted on other members' votes and moved the
-   * record on — their review still gets recorded either way. */
+   * record on — their review still gets recorded either way. This holds even
+   * once the PI has resubmitted and it's routed back to the Secretariat
+   * (pending_review): a straggler's vote still counts right up until the
+   * Secretariat re-triages and starts a fresh review cycle. */
   isUnderReviewVotingOpenToMember() {
     return (
       this.isAssignedMember() &&
       !this.hasVoted(this.currentRole) &&
       (this.record.status === 'under_review' ||
-        (['for_revision', 'pending_leadership_approval', 'approved'].includes(this.record.status) &&
+        (['for_revision', 'pending_leadership_approval', 'approved', 'pending_review'].includes(
+          this.record.status
+        ) &&
           this.getVotes().length > 0))
     );
   }
@@ -114,13 +119,15 @@ class IrpfFormController {
 
   /* Same idea for leadership: a leader can still cast their vote even after
    * the Secretariat has already recorded a final outcome based on the other
-   * leader's vote. */
+   * leader's vote, and even after the PI has resubmitted and it's routed
+   * back to the Secretariat (pending_review). */
   isPendingLeadershipApproval() {
     return (
       isIrbLeadership(this.currentRole) &&
       !this.hasLeadershipVoted(this.currentRole) &&
       (this.record.status === 'pending_leadership_approval' ||
-        (['approved', 'for_revision'].includes(this.record.status) && this.getLeadershipApprovals().length > 0))
+        (['approved', 'for_revision', 'pending_review'].includes(this.record.status) &&
+          this.getLeadershipApprovals().length > 0))
     );
   }
 

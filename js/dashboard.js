@@ -14,12 +14,14 @@ function needsActionFromCurrentRole(record, role) {
   }
   if (isIrbMember(role)) {
     // Stays actionable even after the Secretariat has moved the record on
-    // based on other members' votes — a late review still gets recorded.
+    // based on other members' votes — including once it's routed back to
+    // the Secretariat (pending_review) after a PI resubmission — a late
+    // review still gets recorded.
     return (
       (record.assignedMembers || []).includes(role) &&
       !(record.votes || []).some((v) => v.voterId === role) &&
       (record.status === 'under_review' ||
-        (['for_revision', 'pending_leadership_approval', 'approved'].includes(record.status) &&
+        (['for_revision', 'pending_leadership_approval', 'approved', 'pending_review'].includes(record.status) &&
           (record.votes || []).length > 0))
     );
   }
@@ -27,7 +29,8 @@ function needsActionFromCurrentRole(record, role) {
     return (
       !(record.leadershipApprovals || []).some((a) => a.approverId === role) &&
       (record.status === 'pending_leadership_approval' ||
-        (['approved', 'for_revision'].includes(record.status) && (record.leadershipApprovals || []).length > 0))
+        (['approved', 'for_revision', 'pending_review'].includes(record.status) &&
+          (record.leadershipApprovals || []).length > 0))
     );
   }
   if (role === 'pi') return record.status === 'for_revision';

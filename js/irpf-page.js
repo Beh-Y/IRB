@@ -301,10 +301,10 @@ function initIrpfPage() {
   } else if (controller.isPendingLeadershipApproval()) {
     leadershipApprovalPanel.hidden = false;
     leadershipIdentityEl.textContent = getRoleLabel(role);
-    showBanner('Review the IRPF below, then submit your decision.', 'info');
+    showBanner('Review the IRPF below, then cast your vote.', 'info');
   } else if (controller.isLeadershipWaitingOnOther()) {
     const otherName = getRoleLabel(IRB_LEADERSHIP_IDS.find((id) => id !== role));
-    showBanner(`You've submitted your review. Waiting on ${otherName}.`, 'info');
+    showBanner(`You've voted. Waiting on ${otherName}.`, 'info');
   } else if (controller.isAwaitingLeadershipApproval()) {
     const pending = IRB_LEADERSHIP_IDS.filter((id) => !controller.hasLeadershipVoted(id))
       .map((id) => getRoleLabel(id))
@@ -416,7 +416,7 @@ function initIrpfPage() {
     renderLeadershipSummary(controller);
     renderActivityLog(record);
     leadershipApprovalPanel.hidden = true;
-    showBanner('Review recorded. Thank you.', 'success');
+    showBanner('Vote recorded. Thank you.', 'success');
   });
 
   function handleCollateDecision(action) {

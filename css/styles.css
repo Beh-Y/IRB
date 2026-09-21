@@ -37,9 +37,30 @@ body {
   flex-wrap: wrap;
 }
 
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .header-title {
   font-weight: 600;
   font-size: 1.05rem;
+}
+
+.header-home-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  border-radius: 6px;
+  padding: 0.2rem;
+  line-height: 0;
+}
+
+.header-home-link:hover {
+  color: var(--color-primary);
+  background: var(--color-muted-bg);
 }
 
 .header-nav a {

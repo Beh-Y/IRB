@@ -22,6 +22,7 @@ function renderHeader(activePage) {
         <select id="role-select">${roleOptions}</select>
       </div>
     </div>
+    <div id="top-actions" class="top-actions"></div>
   `;
 
   document.getElementById('role-select').addEventListener('change', (e) => {

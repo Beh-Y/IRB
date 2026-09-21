@@ -233,9 +233,12 @@ class IpafFormController {
         sectionEl.appendChild(list);
       }
 
+      const grid = document.createElement('div');
+      grid.className = 'field-grid';
       section.fields.forEach((field) => {
-        sectionEl.appendChild(this.buildFieldRow(field));
+        grid.appendChild(this.buildFieldRow(field));
       });
+      sectionEl.appendChild(grid);
 
       container.appendChild(sectionEl);
     });
@@ -245,7 +248,7 @@ class IpafFormController {
 
   buildFieldRow(field) {
     const row = document.createElement('div');
-    row.className = 'field-row';
+    row.className = isFullWidthField(field) ? 'field-row field-row--full' : 'field-row';
     row.dataset.fieldId = field.id;
 
     const labelWrap = document.createElement('div');

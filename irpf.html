@@ -19,11 +19,6 @@
 
     <div id="status-banner" class="status-banner" hidden></div>
 
-    <div id="activity-log" class="activity-log" hidden>
-      <h2>Activity</h2>
-      <ul id="activity-log-list"></ul>
-    </div>
-
     <div id="triage-panel" class="triage-panel" hidden>
       <h2>Secretariat Review</h2>
       <p class="triage-hint">
@@ -138,6 +133,13 @@
       <button id="btn-approve" type="button" class="btn btn-primary">Approve</button>
       <button id="btn-close" type="button" class="btn btn-tertiary">Close</button>
     </div>
+
+    <div id="bottom-panel-actions"></div>
+
+    <details id="activity-log" class="activity-log" hidden>
+      <summary>Activity Log</summary>
+      <ul id="activity-log-list"></ul>
+    </details>
   </main>
 
   <script src="js/error-guard.js"></script>

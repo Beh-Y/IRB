@@ -1,5 +1,9 @@
 /* Wires the IRPF document generation script into irpf.html: loads/creates the
- * record, mounts the form, and exposes the role-appropriate actions. */
+ * record, mounts the form, and exposes the role-appropriate actions. Every
+ * action that changes the record's status or state redirects to the
+ * dashboard on success (with a flash banner there); only a failed action
+ * (validation, a missing comment) keeps the user on this page so they can
+ * fix it. */
 
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
@@ -370,24 +374,19 @@ function initIrpfPage() {
   const createIpafChildBtn = document.getElementById('btn-create-ipaf-child');
   const openIpafChildLink = document.getElementById('link-open-ipaf-child');
 
-  // Re-run after any same-page action that could change record.status to/from
-  // 'to_create_ipaf' (there's no page reload in between to re-derive this).
-  function refreshIpafLinkPanel() {
-    if (record.status === 'to_create_ipaf') {
-      ipafLinkPanel.hidden = false;
-      if (record.childIpafId) {
-        createIpafChildBtn.hidden = true;
-        openIpafChildLink.hidden = false;
-        openIpafChildLink.href = `ipaf.html?id=${record.childIpafId}`;
-      } else {
-        createIpafChildBtn.hidden = false;
-        openIpafChildLink.hidden = true;
-      }
+  if (record.status === 'to_create_ipaf') {
+    ipafLinkPanel.hidden = false;
+    if (record.childIpafId) {
+      createIpafChildBtn.hidden = true;
+      openIpafChildLink.hidden = false;
+      openIpafChildLink.href = `ipaf.html?id=${record.childIpafId}`;
     } else {
-      ipafLinkPanel.hidden = true;
+      createIpafChildBtn.hidden = false;
+      openIpafChildLink.hidden = true;
     }
+  } else {
+    ipafLinkPanel.hidden = true;
   }
-  refreshIpafLinkPanel();
 
   createIpafChildBtn.addEventListener('click', () => {
     const ipafRecord = createChildIpaf(record, role);
@@ -398,44 +397,36 @@ function initIrpfPage() {
       status: record.status,
       note: `Created child IPAF ${ipafRecord.id}.`,
     });
-    window.location.href = `ipaf.html?id=${ipafRecord.id}`;
+    goToDashboardWithMessage(
+      `IPAF form ${ipafRecord.data.refNumber || ''} created. Open it from the dashboard to continue.`,
+      'success'
+    );
   });
 
   saveBtn.addEventListener('click', () => {
     controller.save();
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    showBanner('Saved as draft. A reference number is assigned once this IRPF is submitted.', 'success');
-    renderActivityLog(record);
-    history.replaceState(null, '', `irpf.html?id=${record.id}`);
+    goToDashboardWithMessage('Saved as draft. A reference number is assigned once this IRPF is submitted.', 'success');
   });
 
   submitBtn.addEventListener('click', () => {
     const wasForRevision = record.status === 'for_revision';
     const result = controller.submit(wasForRevision ? piCommentInput.value : undefined);
     if (!result.ok) {
-      showBanner('Please resolve the highlighted fields before submitting.', 'error');
+      const missing = describeMissingFields(result.errors, controller.fields);
+      showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
       return;
     }
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    showBanner(
+    goToDashboardWithMessage(
       wasForRevision
         ? `Resubmitted. Routed to ${getRoleLabel(record.routedTo)} for review.`
         : `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'
     );
-    renderActivityLog(record);
-    saveBtn.hidden = true;
-    submitBtn.hidden = true;
-    piCommentPanel.hidden = true;
-    history.replaceState(null, '', `irpf.html?id=${record.id}`);
   });
 
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    showBanner(`Approved and routed to ${getRoleLabel(record.routedTo)}.`, 'success');
-    renderActivityLog(record);
-    approveBtn.hidden = true;
+    goToDashboardWithMessage(`Approved and routed to ${getRoleLabel(record.routedTo)}.`, 'success');
   });
 
   routeToMembersBtn.addEventListener('click', () => {
@@ -445,22 +436,13 @@ function initIrpfPage() {
       triageError.textContent = result.error;
       return;
     }
-    triageError.textContent = '';
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    renderActivityLog(record);
-    triagePanel.hidden = true;
     const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
-    showBanner(`Routed to ${names} for review.`, 'success');
+    goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
   });
 
   triageRouteToLeadershipBtn.addEventListener('click', () => {
     controller.routeToLeadershipApproval(triageComment.value);
-    triageError.textContent = '';
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    renderActivityLog(record);
-    renderLeadershipSummary(controller);
-    triagePanel.hidden = true;
-    showBanner('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+    goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
   });
 
   castVoteBtn.addEventListener('click', () => {
@@ -470,34 +452,12 @@ function initIrpfPage() {
       voteError.textContent = result.error;
       return;
     }
-    voteError.textContent = '';
-    voteCommentInput.value = '';
-    voteFormPanel.querySelectorAll('input[name="voteDecision"]').forEach((r) => (r.checked = false));
-    renderVotingSummary(controller);
-    renderActivityLog(record);
-    voteFormPanel.hidden = true;
-    showBanner('Vote recorded. Thank you.', 'success');
+    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
   });
-
-  // The Secretariat can keep acting on these panels even after they've just
-  // acted — e.g. a late vote comes in and changes their mind — so instead of
-  // hiding the panel after a click, re-evaluate whether it's still available.
-  function refreshSecretariatPanels() {
-    underReviewActionPanel.hidden = !controller.isPendingSecretariatUnderReviewAction();
-    if (!underReviewActionPanel.hidden) renderUnderReviewActionHint(controller);
-
-    collatePanel.hidden = !controller.isPendingSecretariatCollation();
-    if (!collatePanel.hidden) renderCollateHint(controller);
-  }
 
   routeToLeadershipBtn.addEventListener('click', () => {
     controller.routeToLeadershipApproval(underReviewActionCommentInput.value);
-    underReviewActionCommentInput.value = '';
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    renderActivityLog(record);
-    renderLeadershipSummary(controller);
-    refreshSecretariatPanels();
-    showBanner('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+    goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
   });
 
   returnAmendmentsEarlyBtn.addEventListener('click', () => {
@@ -506,12 +466,7 @@ function initIrpfPage() {
       underReviewActionError.textContent = result.error;
       return;
     }
-    underReviewActionError.textContent = '';
-    underReviewActionCommentInput.value = '';
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    renderActivityLog(record);
-    refreshSecretariatPanels();
-    showBanner('Sent back for revision. The PI has been notified.', 'success');
+    goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
   });
 
   leadershipVoteBtn.addEventListener('click', () => {
@@ -521,13 +476,7 @@ function initIrpfPage() {
       leadershipError.textContent = result.error;
       return;
     }
-    leadershipError.textContent = '';
-    leadershipCommentInput.value = '';
-    leadershipApprovalPanel.querySelectorAll('input[name="leadershipDecision"]').forEach((r) => (r.checked = false));
-    renderLeadershipSummary(controller);
-    renderActivityLog(record);
-    leadershipApprovalPanel.hidden = true;
-    showBanner('Vote recorded. Thank you.', 'success');
+    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
   });
 
   function handleCollateDecision(action) {
@@ -537,17 +486,12 @@ function initIrpfPage() {
       collateError.textContent = result.error;
       return;
     }
-    collateError.textContent = '';
-    collateComment.value = '';
-    document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    renderActivityLog(record);
-    refreshSecretariatPanels();
-    refreshIpafLinkPanel();
-
     if (record.status === 'approved' || record.status === 'to_create_ipaf') {
-      showBanner(describeFinalOutcome(record), 'success');
+      goToDashboardWithMessage(describeFinalOutcome(record), 'success');
     } else if (record.status === 'for_revision') {
-      showBanner('Sent back for revision. The PI has been notified.', 'success');
+      goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
+    } else {
+      goToDashboardWithMessage('Decision recorded.', 'success');
     }
   }
 
@@ -557,6 +501,18 @@ function initIrpfPage() {
 
   closeBtn.addEventListener('click', () => {
     window.location.href = 'index.html';
+  });
+
+  mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
+  [
+    triagePanel,
+    voteFormPanel,
+    underReviewActionPanel,
+    leadershipApprovalPanel,
+    collatePanel,
+    ipafLinkPanel,
+  ].forEach((panel) => {
+    mirrorActionRow(panel, document.getElementById('bottom-panel-actions'));
   });
 }
 

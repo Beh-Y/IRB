@@ -121,6 +121,14 @@ function needsActionFromCurrentRole(record, role) {
 function renderDashboard() {
   renderHeader('dashboard');
 
+  const flash = consumeFlashMessage();
+  if (flash) {
+    const banner = document.getElementById('status-banner');
+    banner.textContent = flash.message;
+    banner.className = `status-banner status-banner--${flash.type}`;
+    banner.hidden = false;
+  }
+
   const role = getCurrentRole();
   const newIrpfBtn = document.getElementById('btn-new-irpf');
   newIrpfBtn.hidden = role !== 'pi';

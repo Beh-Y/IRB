@@ -1,6 +1,9 @@
 /* Wires the IPAF document generation script into ipaf.html: loads the
  * record (always created via the parent IRPF's "Create IPAF Form" button),
- * mounts the form, and exposes the role-appropriate actions. */
+ * mounts the form, and exposes the role-appropriate actions. Every action
+ * that changes the record's status or state redirects to the dashboard on
+ * success (with a flash banner there); only a failed action (validation, a
+ * missing comment) keeps the user on this page so they can fix it. */
 
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
@@ -175,11 +178,6 @@ function initIpafPage() {
   piCommentPanel.hidden = true;
   acknowledgePanel.hidden = true;
 
-  function refreshSecretariatPanel() {
-    collatePanel.hidden = !controller.isPendingSecretariatUnderReviewAction();
-    if (!collatePanel.hidden) renderCollateHint(controller);
-  }
-
   if (controller.isEditableByPi()) {
     saveBtn.hidden = false;
     submitBtn.hidden = false;
@@ -233,39 +231,28 @@ function initIpafPage() {
 
   saveBtn.addEventListener('click', () => {
     controller.save();
-    document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
-    showBanner('Saved as draft. A reference number is assigned once this IPAF is submitted.', 'success');
-    renderActivityLog(record);
-    history.replaceState(null, '', `ipaf.html?id=${record.id}`);
+    goToDashboardWithMessage('Saved as draft. A reference number is assigned once this IPAF is submitted.', 'success');
   });
 
   submitBtn.addEventListener('click', () => {
     const wasForRevision = record.status === 'for_revision';
     const result = controller.submit(wasForRevision ? piCommentInput.value : undefined);
     if (!result.ok) {
-      showBanner('Please resolve the highlighted fields before submitting.', 'error');
+      const missing = describeMissingFields(result.errors, controller.fields);
+      showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
       return;
     }
-    document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
-    showBanner(
+    goToDashboardWithMessage(
       wasForRevision
         ? `Resubmitted. Routed to ${getRoleLabel(record.routedTo)} for review.`
         : `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'
     );
-    renderActivityLog(record);
-    saveBtn.hidden = true;
-    submitBtn.hidden = true;
-    piCommentPanel.hidden = true;
-    history.replaceState(null, '', `ipaf.html?id=${record.id}`);
   });
 
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();
-    document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
-    showBanner(`Approved and routed to ${getRoleLabel(record.routedTo)}.`, 'success');
-    renderActivityLog(record);
-    approveBtn.hidden = true;
+    goToDashboardWithMessage(`Approved and routed to ${getRoleLabel(record.routedTo)}.`, 'success');
   });
 
   routeToMembersBtn.addEventListener('click', () => {
@@ -275,12 +262,8 @@ function initIpafPage() {
       triageError.textContent = result.error;
       return;
     }
-    triageError.textContent = '';
-    document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
-    renderActivityLog(record);
-    triagePanel.hidden = true;
     const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
-    showBanner(`Routed to ${names} for review.`, 'success');
+    goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
   });
 
   castVoteBtn.addEventListener('click', () => {
@@ -290,13 +273,7 @@ function initIpafPage() {
       voteError.textContent = result.error;
       return;
     }
-    voteError.textContent = '';
-    voteCommentInput.value = '';
-    voteFormPanel.querySelectorAll('input[name="voteDecision"]').forEach((r) => (r.checked = false));
-    renderVotingSummary(controller);
-    renderActivityLog(record);
-    voteFormPanel.hidden = true;
-    showBanner('Vote recorded. Thank you.', 'success');
+    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
   });
 
   function handleCollateDecision(action) {
@@ -306,16 +283,12 @@ function initIpafPage() {
       collateError.textContent = result.error;
       return;
     }
-    collateError.textContent = '';
-    collateComment.value = '';
-    document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
-    renderActivityLog(record);
-    refreshSecretariatPanel();
-
     if (record.status === 'approved') {
-      showBanner('This IPAF is approved.', 'success');
+      goToDashboardWithMessage('This IPAF is approved.', 'success');
     } else if (record.status === 'for_revision') {
-      showBanner('Sent back for revision. The PI has been notified.', 'success');
+      goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
+    } else {
+      goToDashboardWithMessage('Decision recorded.', 'success');
     }
   }
 
@@ -324,13 +297,16 @@ function initIpafPage() {
 
   acknowledgeBtn.addEventListener('click', () => {
     controller.acknowledge();
-    renderActivityLog(record);
-    acknowledgePanel.hidden = true;
-    showBanner('Thank you for acknowledging your responsibilities as PI.', 'success');
+    goToDashboardWithMessage('Thank you for acknowledging your responsibilities as PI.', 'success');
   });
 
   closeBtn.addEventListener('click', () => {
     window.location.href = `irpf.html?id=${record.parentIrpfId}`;
+  });
+
+  mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
+  [triagePanel, voteFormPanel, collatePanel, acknowledgePanel].forEach((panel) => {
+    mirrorActionRow(panel, document.getElementById('bottom-panel-actions'));
   });
 }
 

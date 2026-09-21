@@ -29,3 +29,94 @@ function readFileAsDataUrl(file) {
     reader.readAsDataURL(file);
   });
 }
+
+/* Field types whose control needs the full row width (long text, file
+ * lists, multi-option groups, repeatable people cards) rather than sharing
+ * a row with a second field -- used to lay sections out two fields per row
+ * while keeping these on their own line. */
+const FULL_WIDTH_FIELD_TYPES = ['textarea', 'file', 'checkbox-group', 'people-list'];
+
+function isFullWidthField(field) {
+  return FULL_WIDTH_FIELD_TYPES.includes(field.type);
+}
+
+/* Turns a validation-errors map ({fieldId: message}) into the list of
+ * human-readable field labels that failed, for a single "here's what's
+ * missing" summary rather than making the user hunt for inline highlights. */
+function describeMissingFields(errors, fields) {
+  const labelById = {};
+  fields.forEach((f) => {
+    labelById[f.id] = f.label;
+  });
+  return Object.keys(errors).map((id) => labelById[id] || id);
+}
+
+// Carries a one-time banner message across a redirect to the dashboard --
+// sessionStorage rather than a query param so it doesn't linger in the URL
+// or survive a bookmark/reload.
+const FLASH_MESSAGE_KEY = 'irb_flash_message';
+
+function setFlashMessage(message, type) {
+  try {
+    sessionStorage.setItem(FLASH_MESSAGE_KEY, JSON.stringify({ message, type }));
+  } catch (e) {
+    // sessionStorage unavailable (e.g. private browsing) -- the redirect
+    // still happens, just without the banner on the other side.
+  }
+}
+
+function consumeFlashMessage() {
+  try {
+    const raw = sessionStorage.getItem(FLASH_MESSAGE_KEY);
+    if (!raw) return null;
+    sessionStorage.removeItem(FLASH_MESSAGE_KEY);
+    return JSON.parse(raw);
+  } catch (e) {
+    return null;
+  }
+}
+
+/* Every action that changes a record's status or state redirects to the
+ * dashboard on success, carrying a flash message so the user still gets
+ * confirmation of what just happened. */
+function goToDashboardWithMessage(message, type) {
+  setFlashMessage(message, type || 'success');
+  window.location.href = 'index.html';
+}
+
+/* Clones an action-button row (e.g. the bottom `.form-actions` bar, or a
+ * contextual panel's `.triage-actions` row) into `targetContainer` so the
+ * same actions are reachable from both the top and bottom of the form.
+ * `visibilityEl` is the element whose `hidden` state the panel/bar was set
+ * from (often the row itself, sometimes its enclosing panel) -- read once,
+ * at call time, since nothing re-hides these mid-page anymore now that
+ * every action redirects away on success. Each clone forwards its click to
+ * the real button so there's exactly one implementation per action. */
+function mirrorActionRow(visibilityEl, targetContainer) {
+  if (!visibilityEl || !targetContainer) return;
+  const sourceRow = visibilityEl.matches && visibilityEl.matches('.triage-actions, .form-actions')
+    ? visibilityEl
+    : visibilityEl.querySelector('.triage-actions, .form-actions');
+  if (!sourceRow) return;
+
+  const mirror = document.createElement('div');
+  mirror.className = sourceRow.className;
+  mirror.hidden = !!visibilityEl.hidden;
+
+  Array.from(sourceRow.children).forEach((child) => {
+    const clone = child.cloneNode(true);
+    if (clone.id) clone.removeAttribute('id');
+    if (child.tagName === 'BUTTON' || child.tagName === 'A') {
+      clone.hidden = child.hidden;
+      clone.disabled = child.disabled;
+      clone.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!child.hidden && !child.disabled) child.click();
+      });
+    }
+    mirror.appendChild(clone);
+  });
+
+  targetContainer.appendChild(mirror);
+  return mirror;
+}

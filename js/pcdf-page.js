@@ -1,5 +1,9 @@
 /* Wires the PCDF document generation script into pcdf.html: loads/creates
- * the record, mounts the form, and exposes the role-appropriate actions. */
+ * the record, mounts the form, and exposes the role-appropriate actions.
+ * Every action that changes the record's status or state redirects to the
+ * dashboard on success (with a flash banner there); only a failed action
+ * (validation, a missing comment) keeps the user on this page so they can
+ * fix it. */
 
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
@@ -107,44 +111,38 @@ function initPcdfPage() {
 
   saveBtn.addEventListener('click', () => {
     controller.save();
-    document.getElementById('pcdf-status-badge').textContent = getStatusLabel(record.status, 'PCDF');
-    showBanner('Saved as draft. A reference number is assigned once this PCDF is submitted.', 'success');
-    renderActivityLog(record);
-    history.replaceState(null, '', `pcdf.html?id=${record.id}`);
+    goToDashboardWithMessage('Saved as draft. A reference number is assigned once this PCDF is submitted.', 'success');
   });
 
   submitBtn.addEventListener('click', () => {
     const result = controller.submit();
     if (!result.ok) {
-      showBanner('Please resolve the highlighted fields before submitting.', 'error');
+      const missing = describeMissingFields(result.errors, controller.fields);
+      showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
       return;
     }
-    document.getElementById('pcdf-status-badge').textContent = getStatusLabel(record.status, 'PCDF');
-    showBanner(`Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`, 'success');
-    renderActivityLog(record);
-    saveBtn.hidden = true;
-    submitBtn.hidden = true;
-    history.replaceState(null, '', `pcdf.html?id=${record.id}`);
+    goToDashboardWithMessage(
+      `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
+      'success'
+    );
   });
 
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();
-    document.getElementById('pcdf-status-badge').textContent = getStatusLabel(record.status, 'PCDF');
-    showBanner('Approved.', 'success');
-    renderActivityLog(record);
-    approveBtn.hidden = true;
+    goToDashboardWithMessage('Approved.', 'success');
   });
 
   acknowledgeBtn.addEventListener('click', () => {
     controller.acknowledge();
-    renderActivityLog(record);
-    acknowledgePanel.hidden = true;
-    showBanner('Thank you for acknowledging your responsibilities as PI.', 'success');
+    goToDashboardWithMessage('Thank you for acknowledging your responsibilities as PI.', 'success');
   });
 
   closeBtn.addEventListener('click', () => {
     window.location.href = 'index.html';
   });
+
+  mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
+  mirrorActionRow(acknowledgePanel, document.getElementById('bottom-panel-actions'));
 }
 
 document.addEventListener('DOMContentLoaded', initPcdfPage);

@@ -143,6 +143,24 @@ body {
   color: var(--color-text-muted);
 }
 
+/* Activity log is now a <details> element at the bottom of the form,
+ * collapsed by default, so it reads as an appendix rather than competing
+ * with the current status/actions at the top. */
+.activity-log summary {
+  font-size: 0.95rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  list-style: revert;
+}
+
+.activity-log[open] summary {
+  margin-bottom: 0.6rem;
+}
+
+.activity-log ul {
+  margin-top: 0.75rem;
+}
+
 .activity-log ul {
   list-style: none;
   margin: 0;
@@ -313,6 +331,15 @@ body {
   margin-top: 0.9rem;
 }
 
+/* A mirrored action row (see mirrorActionRow in form-utils.js) reuses this
+ * class so it inherits the same look, but that means its own `display: flex`
+ * would otherwise beat the browser's default `[hidden] { display: none }` --
+ * spell it out explicitly so hiding a mirror actually hides it. */
+.triage-actions[hidden],
+.form-actions[hidden] {
+  display: none;
+}
+
 .form-container {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -335,12 +362,25 @@ body {
   color: var(--color-primary);
 }
 
+/* Lays fields out two per row (each a self-contained label+input); a
+ * textarea, file list, multi-option group or people-list still takes the
+ * full row via .field-row--full. */
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 2rem;
+}
+
 .field-row {
   display: grid;
-  grid-template-columns: minmax(200px, 320px) 1fr;
-  gap: 1rem;
+  grid-template-columns: minmax(140px, 1fr) minmax(0, 1.4fr);
+  gap: 0.75rem;
   padding: 0.6rem 0;
   align-items: start;
+}
+
+.field-row--full {
+  grid-column: 1 / -1;
 }
 
 .field-row[hidden] {
@@ -569,7 +609,36 @@ body {
   padding: 2rem 0;
 }
 
+.top-actions {
+  margin-bottom: 1.25rem;
+}
+
+.top-actions .form-actions,
+.top-actions .triage-actions {
+  margin-top: 0;
+}
+
+.top-actions:empty {
+  display: none;
+}
+
+#bottom-panel-actions {
+  margin-top: 1.5rem;
+}
+
+#bottom-panel-actions .triage-actions {
+  margin: 0 0 0.75rem;
+}
+
+#bottom-panel-actions:empty {
+  display: none;
+}
+
 @media (max-width: 640px) {
+  .field-grid {
+    grid-template-columns: 1fr;
+  }
+
   .field-row {
     grid-template-columns: 1fr;
   }

@@ -581,13 +581,14 @@ body {
 }
 
 /* Indents an IPAF row's reference number, since it's grouped directly under
- * its parent IRPF row rather than sorted independently. */
-.submissions-table tr.child-row td:first-child {
+ * its parent IRPF row rather than sorted independently. Targets the second
+ * column (Reference No.) since Action is now the leftmost column. */
+.submissions-table tr.child-row td:nth-child(2) {
   padding-left: 1.8rem;
   position: relative;
 }
 
-.submissions-table tr.child-row td:first-child::before {
+.submissions-table tr.child-row td:nth-child(2)::before {
   content: '↳';
   position: absolute;
   left: 0.7rem;

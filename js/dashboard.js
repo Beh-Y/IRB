@@ -38,6 +38,29 @@ function sortByRefNumber(submissions, prefix) {
   });
 }
 
+/* Same idea as refNumberSortKey, but prefix-agnostic (IRB-... or PCDF-...)
+ * so IRPF/IPAF and PCDF rows can be sorted newest-first together in the
+ * merged "Pending My Action" table. */
+function anyPrefixRefSortKey(refNumber) {
+  const match = /^(?:IRB|PCDF)-(\d{2})-(\d{4})-(\d{3})/.exec(refNumber || '');
+  if (!match) return null;
+  const [, mm, yyyy, xxx] = match;
+  return Number(yyyy) * 100000 + Number(mm) * 1000 + Number(xxx);
+}
+
+function sortByAnyPrefixRefNumber(submissions) {
+  return submissions.sort((a, b) => {
+    const keyA = anyPrefixRefSortKey(a.data.refNumber);
+    const keyB = anyPrefixRefSortKey(b.data.refNumber);
+    if (keyA === null && keyB === null) {
+      return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
+    }
+    if (keyA === null) return -1;
+    if (keyB === null) return 1;
+    return keyB - keyA;
+  });
+}
+
 /* Orders IRPFs by reference number (newest first), then places each IPAF
  * immediately after its parent IRPF -- rather than sorting IPAF and IRPF
  * together by reference number, which would only coincidentally keep a
@@ -130,6 +153,9 @@ function renderDashboard() {
   }
 
   const role = getCurrentRole();
+
+  renderPendingActionTable(role);
+
   const newIrpfBtn = document.getElementById('btn-new-irpf');
   newIrpfBtn.hidden = role !== 'pi';
   newIrpfBtn.addEventListener('click', () => {
@@ -194,6 +220,7 @@ function renderDashboard() {
       actionCell.appendChild(badge);
     }
 
+    tr.appendChild(actionCell);
     tr.appendChild(refCell);
     tr.appendChild(formCell);
     tr.appendChild(titleCell);
@@ -202,11 +229,79 @@ function renderDashboard() {
     tr.appendChild(endDateCell);
     tr.appendChild(statusCell);
     tr.appendChild(updatedCell);
-    tr.appendChild(actionCell);
     tbody.appendChild(tr);
   });
 
   renderPcdfDashboard(role);
+}
+
+/* Merges IRPF, IPAF and PCDF submissions that need action from the
+ * currently previewed role into a single "to-do" table at the top of the
+ * dashboard, newest first, with a Form column since it spans all three
+ * form types. */
+function renderPendingActionTable(role) {
+  const tbody = document.getElementById('pending-action-body');
+  tbody.innerHTML = '';
+
+  const pending = sortByAnyPrefixRefNumber([
+    ...getSubmissionsByType('IRPF').filter((r) => needsActionFromCurrentRole(r, role)),
+    ...getSubmissionsByType('IPAF').filter((r) => needsActionFromCurrentRole(r, role)),
+    ...getSubmissionsByType('PCDF').filter((r) => needsActionFromCurrentRolePcdf(r, role)),
+  ]);
+
+  if (pending.length === 0) {
+    const emptyRow = document.createElement('tr');
+    emptyRow.innerHTML = '<td colspan="9" class="empty-state">Nothing needs your action right now.</td>';
+    tbody.appendChild(emptyRow);
+    return;
+  }
+
+  pending.forEach((record) => {
+    const tr = document.createElement('tr');
+    tr.classList.add('needs-action');
+
+    const actionCell = document.createElement('td');
+    const link = document.createElement('a');
+    link.href = `${record.formType.toLowerCase()}.html?id=${record.id}`;
+    link.textContent = 'Open';
+    link.className = 'btn btn-link';
+    actionCell.appendChild(link);
+
+    const formCell = document.createElement('td');
+    formCell.textContent = record.formType;
+
+    const refCell = document.createElement('td');
+    refCell.textContent = record.data.refNumber || '(draft, no reference yet)';
+
+    const titleCell = document.createElement('td');
+    titleCell.textContent = record.data.projectTitle || '(untitled)';
+
+    const categoryCell = document.createElement('td');
+    categoryCell.textContent = record.data.categoryOfResearch || '—';
+
+    const startDateCell = document.createElement('td');
+    startDateCell.textContent = formatIsoDate(record.data.projectStartDate);
+
+    const endDateCell = document.createElement('td');
+    endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
+
+    const statusCell = document.createElement('td');
+    statusCell.textContent = getStatusLabel(record.status, record.formType);
+
+    const updatedCell = document.createElement('td');
+    updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';
+
+    tr.appendChild(actionCell);
+    tr.appendChild(formCell);
+    tr.appendChild(refCell);
+    tr.appendChild(titleCell);
+    tr.appendChild(categoryCell);
+    tr.appendChild(startDateCell);
+    tr.appendChild(endDateCell);
+    tr.appendChild(statusCell);
+    tr.appendChild(updatedCell);
+    tbody.appendChild(tr);
+  });
 }
 
 /* PCDF is a standalone form (no parent-child relationship to the IRPF), so
@@ -265,13 +360,13 @@ function renderPcdfDashboard(role) {
       actionCell.appendChild(badge);
     }
 
+    tr.appendChild(actionCell);
     tr.appendChild(refCell);
     tr.appendChild(titleCell);
     tr.appendChild(startDateCell);
     tr.appendChild(endDateCell);
     tr.appendChild(statusCell);
     tr.appendChild(updatedCell);
-    tr.appendChild(actionCell);
     tbody.appendChild(tr);
   });
 }

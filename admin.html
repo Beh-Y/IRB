@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin – SP IRB Process Management</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div id="status-banner" class="status-banner" hidden></div>
+
+    <div class="page-header">
+      <h1>Reference Number Counters</h1>
+    </div>
+
+    <div id="admin-content">
+      <p class="triage-hint">
+        The last-assigned sequence number per form type and month/year period. Each counter increments once, on
+        first Submit, and never changes afterwards -- a draft that's only ever Saved doesn't touch it.
+      </p>
+
+      <table class="submissions-table">
+        <thead>
+          <tr>
+            <th>Form Type</th>
+            <th>Period (MM-YYYY)</th>
+            <th>Last Assigned</th>
+            <th>Next Sequence</th>
+          </tr>
+        </thead>
+        <tbody id="ref-counters-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="js/error-guard.js"></script>
+  <script src="js/roles.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/status.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/form-utils.js"></script>
+  <script src="js/admin.js"></script>
+</body>
+</html>

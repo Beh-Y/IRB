@@ -19,6 +19,15 @@ function renderHeader(activePage) {
       `
       : '';
 
+  // The reference-number counters are an internal detail, not something any
+  // other role needs (or should be able) to see, so the nav link only shows
+  // up for the System Admin persona -- and admin.js blocks direct access by
+  // URL for everyone else regardless.
+  const adminLink =
+    currentRole === 'system-admin'
+      ? `<a href="admin.html" class="${activePage === 'admin' ? 'active' : ''}">Admin</a>`
+      : '';
+
   container.innerHTML = `
     <div class="header-bar">
       <div class="header-brand">
@@ -34,6 +43,7 @@ function renderHeader(activePage) {
       <nav class="header-nav">
         <a href="index.html" class="${activePage === 'dashboard' ? 'active' : ''}">Dashboard</a>
         ${newFormLinks}
+        ${adminLink}
       </nav>
       <div class="header-role-switcher">
         <label for="role-select">Preview as</label>

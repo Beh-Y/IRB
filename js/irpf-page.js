@@ -404,7 +404,7 @@ function initIrpfPage() {
   saveBtn.addEventListener('click', () => {
     controller.save();
     document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
-    showBanner(`Saved as draft. Reference number: ${record.data.refNumber}`, 'success');
+    showBanner('Saved as draft. A reference number is assigned once this IRPF is submitted.', 'success');
     renderActivityLog(record);
     history.replaceState(null, '', `irpf.html?id=${record.id}`);
   });

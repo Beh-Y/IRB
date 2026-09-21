@@ -234,7 +234,7 @@ function initIpafPage() {
   saveBtn.addEventListener('click', () => {
     controller.save();
     document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
-    showBanner(`Saved as draft. Reference number: ${record.data.refNumber}`, 'success');
+    showBanner('Saved as draft. A reference number is assigned once this IPAF is submitted.', 'success');
     renderActivityLog(record);
     history.replaceState(null, '', `ipaf.html?id=${record.id}`);
   });

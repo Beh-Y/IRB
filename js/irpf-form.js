@@ -583,10 +583,17 @@ class IrpfFormController {
     });
   }
 
-  ensureCreatedAndRefNumber() {
+  ensureCreated() {
     if (!this.record.createdAt) {
       this.record.createdAt = new Date().toISOString();
     }
+  }
+
+  /* Reference numbers are assigned on first Submit, not on Save -- otherwise
+   * every draft saved but never submitted would still burn a number from the
+   * shared per-period counter, making submitted numbers look like they
+   * "reset" or skip ahead. */
+  assignRefNumber() {
     if (!this.record.data.refNumber) {
       this.record.data.refNumber = generateIRPFReferenceNumber(new Date(this.record.createdAt));
       const displayEl = this.fieldEls.refNumber && this.fieldEls.refNumber.input;
@@ -595,7 +602,7 @@ class IrpfFormController {
   }
 
   save() {
-    this.ensureCreatedAndRefNumber();
+    this.ensureCreated();
     saveSubmission(this.record, { action: 'save', actor: this.currentRole, status: this.record.status });
     return { ok: true };
   }
@@ -607,7 +614,8 @@ class IrpfFormController {
       return { ok: false, errors };
     }
 
-    this.ensureCreatedAndRefNumber();
+    this.ensureCreated();
+    this.assignRefNumber();
     this.record.data.piSubmissionDate = formatDateDDMMMYYYY(new Date());
     const piDateEl = this.fieldEls.piSubmissionDate && this.fieldEls.piSubmissionDate.input;
     if (piDateEl) piDateEl.textContent = this.record.data.piSubmissionDate;

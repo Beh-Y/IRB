@@ -108,7 +108,7 @@ function initPcdfPage() {
   saveBtn.addEventListener('click', () => {
     controller.save();
     document.getElementById('pcdf-status-badge').textContent = getStatusLabel(record.status, 'PCDF');
-    showBanner(`Saved as draft. Reference number: ${record.data.refNumber}`, 'success');
+    showBanner('Saved as draft. A reference number is assigned once this PCDF is submitted.', 'success');
     renderActivityLog(record);
     history.replaceState(null, '', `pcdf.html?id=${record.id}`);
   });

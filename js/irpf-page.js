@@ -130,6 +130,37 @@ function renderActivityLog(record) {
   });
 }
 
+/* Top-of-page panel for the Secretariat: every comment left so far --
+ * from IRB Member votes, IRB Leadership votes, and the Secretariat's own
+ * past "Return for Amendments" notes (from triage, under-review-action,
+ * or collate) -- in one place, each with the specific reviewer's
+ * identity, their decision, and when, newest first. Unlike the PI's
+ * blinded "Reviewer Feedback" panel further down the page, this one
+ * fully identifies who said what, so the Secretariat has the whole
+ * picture before deciding on this record's next step. */
+function renderCommentsPanel(controller) {
+  const container = document.getElementById('comments-panel');
+  const list = document.getElementById('comments-panel-list');
+
+  if (!isSecretariat(controller.currentRole)) {
+    container.hidden = true;
+    return;
+  }
+
+  const entries = [
+    ...controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp })),
+    ...controller
+      .getLeadershipApprovals()
+      .map((a) => ({ identity: a.approverName, decision: a.decision, comment: a.comment, timestamp: a.timestamp })),
+    ...(controller.record.history || [])
+      .filter((h) => h.action === 'returned_for_amendments')
+      .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp })),
+  ];
+
+  const hasComments = renderIdentifiedReviewComments(list, entries);
+  container.hidden = !hasComments;
+}
+
 function renderVotingSummary(controller) {
   const container = document.getElementById('voting-summary');
   const heading = document.getElementById('voting-summary-heading');
@@ -300,6 +331,7 @@ function initIrpfPage() {
   document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
   controller.mount(document.getElementById('irpf-form-container'));
   renderActivityLog(record);
+  renderCommentsPanel(controller);
   renderVotingSummary(controller);
   renderLeadershipSummary(controller);
   renderTriageMemberCheckboxes(record.assignedMembers);

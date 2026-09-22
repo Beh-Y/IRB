@@ -118,6 +118,34 @@ function renderBlindedReviewComments(list, comments) {
   return deduped.length > 0;
 }
 
+/* Renders a fully-identified list of review comments -- who left it, their
+ * decision (if any), and when -- for staff roles who need the full
+ * picture (currently: the Secretariat's top-of-page Comments panel),
+ * unlike the PI's blinded feedback panel. Takes an array of {identity,
+ * decision, comment, timestamp}; entries with no comment are skipped, and
+ * the rest are shown newest first. Returns true if anything was
+ * rendered, so the caller can hide the panel when there's nothing yet. */
+function renderIdentifiedReviewComments(list, entries) {
+  list.innerHTML = '';
+  const withComments = entries
+    .filter((e) => e.comment && e.comment.trim())
+    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  withComments.forEach((entry) => {
+    const li = document.createElement('li');
+    const meta = document.createElement('div');
+    meta.className = 'activity-meta';
+    const when = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
+    meta.textContent = entry.decision ? `${when} — ${entry.identity} — ${entry.decision}` : `${when} — ${entry.identity}`;
+    li.appendChild(meta);
+    const note = document.createElement('div');
+    note.className = 'activity-note';
+    note.textContent = entry.comment;
+    li.appendChild(note);
+    list.appendChild(li);
+  });
+  return withComments.length > 0;
+}
+
 /* Clones an action-button row (e.g. the bottom `.form-actions` bar, or a
  * contextual panel's `.triage-actions` row) into `targetContainer` so the
  * same actions are reachable from both the top and bottom of the form.

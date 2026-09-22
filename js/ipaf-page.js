@@ -72,6 +72,33 @@ function renderActivityLog(record) {
   });
 }
 
+/* Top-of-page panel for the Secretariat: every comment left so far --
+ * from IRB Member votes and the Secretariat's own past "Return for
+ * Amendments" notes (from triage or collate) -- in one place, each with
+ * the specific reviewer's identity, their decision, and when, newest
+ * first. Unlike the PI's blinded "Reviewer Feedback" panel further down
+ * the page, this one fully identifies who said what, so the Secretariat
+ * has the whole picture before deciding on this record's next step. */
+function renderCommentsPanel(controller) {
+  const container = document.getElementById('comments-panel');
+  const list = document.getElementById('comments-panel-list');
+
+  if (!isSecretariat(controller.currentRole)) {
+    container.hidden = true;
+    return;
+  }
+
+  const entries = [
+    ...controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp })),
+    ...(controller.record.history || [])
+      .filter((h) => h.action === 'returned_for_amendments')
+      .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp })),
+  ];
+
+  const hasComments = renderIdentifiedReviewComments(list, entries);
+  container.hidden = !hasComments;
+}
+
 function renderVotingSummary(controller) {
   const container = document.getElementById('voting-summary');
   const heading = document.getElementById('voting-summary-heading');
@@ -166,6 +193,7 @@ function initIpafPage() {
   document.getElementById('link-back-to-irpf').href = `irpf.html?id=${record.parentIrpfId}`;
   controller.mount(document.getElementById('ipaf-form-container'));
   renderActivityLog(record);
+  renderCommentsPanel(controller);
   renderVotingSummary(controller);
   renderTriageMemberCheckboxes(record.assignedMembers);
 

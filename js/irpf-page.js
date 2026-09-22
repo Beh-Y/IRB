@@ -130,19 +130,20 @@ function renderActivityLog(record) {
   });
 }
 
-/* Top-of-page panel for the Secretariat: every comment left so far --
- * from IRB Member votes, IRB Leadership votes, and the Secretariat's own
- * past "Return for Amendments" notes (from triage, under-review-action,
- * or collate) -- in one place, each with the specific reviewer's
- * identity, their decision, and when, newest first. Unlike the PI's
- * blinded "Reviewer Feedback" panel further down the page, this one
- * fully identifies who said what, so the Secretariat has the whole
- * picture before deciding on this record's next step. */
+/* Top-of-page panel for staff reviewers (Secretariat, IRB Members, IRB
+ * Leadership): every comment left so far -- from IRB Member votes, IRB
+ * Leadership votes, and the Secretariat's own past "Return for
+ * Amendments" notes (from triage, under-review-action, or collate) -- in
+ * one place, each with the specific reviewer's identity, their decision,
+ * and when, newest first. Unlike the PI's blinded "Reviewer Feedback"
+ * panel further down the page, this one fully identifies who said what,
+ * so anyone reviewing has the whole picture before acting. */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
   const list = document.getElementById('comments-panel-list');
 
-  if (!isSecretariat(controller.currentRole)) {
+  const role = controller.currentRole;
+  if (!isSecretariat(role) && !isIrbMember(role) && !isIrbLeadership(role)) {
     container.hidden = true;
     return;
   }

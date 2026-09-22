@@ -141,12 +141,12 @@ function renderVotingSummary(controller) {
     // or collate) and leadership's -- not gated on members ever having
     // been assigned, since a triage-stage return has none.
     heading.textContent = 'Reviewer Feedback';
-    const comments = [
-      ...controller.getVotes().map((v) => v.comment),
-      ...controller.getLeadershipApprovals().map((a) => a.comment),
+    const entries = [
+      ...controller.getVotes().map((v) => ({ source: 'IRB Member', comment: v.comment })),
+      ...controller.getLeadershipApprovals().map((a) => ({ source: 'IRB Leadership', comment: a.comment })),
       ...getReturnedForAmendmentsNotes(controller.record),
     ];
-    const hasComments = renderBlindedReviewComments(list, comments);
+    const hasComments = renderBlindedReviewComments(list, entries);
     container.hidden = !hasComments;
     return;
   }

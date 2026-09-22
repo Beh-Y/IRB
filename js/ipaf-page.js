@@ -83,8 +83,11 @@ function renderVotingSummary(controller) {
     // gated on members ever having been assigned, since a triage-stage
     // return has none.
     heading.textContent = 'Reviewer Feedback';
-    const comments = [...controller.getVotes().map((v) => v.comment), ...getReturnedForAmendmentsNotes(controller.record)];
-    const hasComments = renderBlindedReviewComments(list, comments);
+    const entries = [
+      ...controller.getVotes().map((v) => ({ source: 'IRB Member', comment: v.comment })),
+      ...getReturnedForAmendmentsNotes(controller.record),
+    ];
+    const hasComments = renderBlindedReviewComments(list, entries);
     container.hidden = !hasComments;
     return;
   }

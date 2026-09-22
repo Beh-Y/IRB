@@ -9,13 +9,20 @@ function renderHeader(activePage) {
     (r) => `<option value="${r.id}" ${r.id === currentRole ? 'selected' : ''}>${r.label}</option>`
   ).join('');
 
-  // Only a PI can start a new IRPF/PCDF (mirrors the dashboard's own
+  // Only a PI can start a new IRPF/PCDF (mirrors submissions.html's own
   // New IRPF/New PCDF buttons), so the nav only offers them for that role.
-  const newFormLinks =
+  // A single "New Submission" trigger opens a hover dropdown with both,
+  // rather than two separate top-level nav items.
+  const newSubmissionDropdown =
     currentRole === 'pi'
       ? `
-        <a href="irpf.html" class="${activePage === 'irpf' ? 'active' : ''}">New IRPF</a>
-        <a href="pcdf.html" class="${activePage === 'pcdf' ? 'active' : ''}">New PCDF</a>
+        <div class="header-nav-dropdown">
+          <span class="${activePage === 'irpf' || activePage === 'pcdf' ? 'active' : ''}" tabindex="0">New Submission</span>
+          <div class="header-nav-dropdown-menu">
+            <a href="irpf.html">New IRPF</a>
+            <a href="pcdf.html">New PCDF</a>
+          </div>
+        </div>
       `
       : '';
 
@@ -42,7 +49,8 @@ function renderHeader(activePage) {
       </div>
       <nav class="header-nav">
         <a href="index.html" class="${activePage === 'dashboard' ? 'active' : ''}">Dashboard</a>
-        ${newFormLinks}
+        <a href="submissions.html" class="${activePage === 'submissions' ? 'active' : ''}">View Project Submissions</a>
+        ${newSubmissionDropdown}
         ${adminLink}
       </nav>
       <div class="header-role-switcher">

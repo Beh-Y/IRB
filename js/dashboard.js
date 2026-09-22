@@ -1,5 +1,6 @@
-/* Renders index.html's two submission tables -- IRPF+IPAF combined into one
- * "Project Submissions" list, and PCDF (standalone, no parent) separately --
+/* Renders the two dashboard-family pages: index.html (the merged "Pending
+ * My Action" to-do list) and submissions.html (the full Project
+ * Submissions -- IRPF+IPAF combined -- and PCDF Submissions tables), both
  * scoped to the current preview role. */
 
 /* Formats a <input type="date"> value ("YYYY-MM-DD") as "DD-MMM-YYYY" without
@@ -141,7 +142,10 @@ function needsActionFromCurrentRole(record, role) {
   return false;
 }
 
-function renderDashboard() {
+/* index.html: just the merged "Pending My Action" to-do list. The full
+ * submission listings live on their own page (submissions.html) so the
+ * dashboard stays focused on what the current role actually needs to do. */
+function renderDashboardPage() {
   renderHeader('dashboard');
 
   const flash = consumeFlashMessage();
@@ -152,9 +156,15 @@ function renderDashboard() {
     banner.hidden = false;
   }
 
-  const role = getCurrentRole();
+  renderPendingActionTable(getCurrentRole());
+}
 
-  renderPendingActionTable(role);
+/* submissions.html: the Project Submissions (IRPF+IPAF merged) and PCDF
+ * Submissions tables, plus the New IRPF/New PCDF creation buttons. */
+function renderSubmissionsPage() {
+  renderHeader('submissions');
+
+  const role = getCurrentRole();
 
   const newIrpfBtn = document.getElementById('btn-new-irpf');
   newIrpfBtn.hidden = role !== 'pi';
@@ -371,4 +381,10 @@ function renderPcdfDashboard(role) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', renderDashboard);
+document.addEventListener('DOMContentLoaded', () => {
+  if (document.getElementById('pending-action-body')) {
+    renderDashboardPage();
+  } else if (document.getElementById('submissions-body') || document.getElementById('pcdf-submissions-body')) {
+    renderSubmissionsPage();
+  }
+});

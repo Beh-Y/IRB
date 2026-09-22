@@ -90,44 +90,28 @@ function goToDashboardWithMessage(message, type) {
  * votes/leadershipApprovals, since that action doesn't require a member or
  * leadership vote to have happened first (e.g. a triage-stage return has
  * neither). Collecting these lets the PI's blinded feedback panel show a
- * reason even when no vote exists yet. Tagged with source: 'Secretariat'
- * to match the {source, comment} shape renderBlindedReviewComments takes. */
+ * reason even when no vote exists yet. */
 function getReturnedForAmendmentsNotes(record) {
-  return (record.history || [])
-    .filter((h) => h.action === 'returned_for_amendments')
-    .map((h) => ({ source: 'Secretariat', comment: h.note }));
+  return (record.history || []).filter((h) => h.action === 'returned_for_amendments').map((h) => h.note);
 }
 
-/* Renders a blinded list of the review comments left so far, each tagged
- * only with which body it came from (IRB Member / IRB Leadership /
- * Secretariat) -- never which specific individual, what their decision
- * was, or when, since review is meant to stay anonymous to the PI. Takes
- * an array of {source, comment}. Returns true if anything was rendered,
- * so the caller can hide the panel entirely when there's nothing to show
- * yet. */
-function renderBlindedReviewComments(list, entries) {
+/* Renders a fully blinded list of just the review comments left so far --
+ * no reviewer identity, no source body (member/leadership/Secretariat), no
+ * decision, no timestamp, no tally -- used for the PI's view of a
+ * reviewer-panel summary, since review is meant to stay completely
+ * anonymous to the PI. (Non-PI roles -- Secretariat, IRB members,
+ * leadership -- see the full, identified detail instead; see the
+ * non-blinded branch in renderVotingSummary/renderLeadershipSummary.)
+ * Returns true if anything was rendered, so the caller can hide the panel
+ * entirely when there's nothing to show yet. */
+function renderBlindedReviewComments(list, comments) {
   list.innerHTML = '';
-  const nonEmpty = entries.filter((e) => e.comment && e.comment.trim());
-  // De-duplicated (by source + text) since a Secretariat's "Return for
-  // Amendments" note and a member/leadership vote's comment can
-  // legitimately be the same text (e.g. the Secretariat just forwards the
-  // reviewer's wording) -- no need to show that exact pairing twice.
-  const seen = new Set();
-  const deduped = nonEmpty.filter((e) => {
-    const key = `${e.source}|${e.comment}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
-  deduped.forEach((entry) => {
+  const deduped = [...new Set(comments.filter((c) => c && c.trim()))];
+  deduped.forEach((comment) => {
     const li = document.createElement('li');
-    const meta = document.createElement('div');
-    meta.className = 'activity-meta';
-    meta.textContent = entry.source;
-    li.appendChild(meta);
     const note = document.createElement('div');
     note.className = 'activity-note';
-    note.textContent = entry.comment;
+    note.textContent = comment;
     li.appendChild(note);
     list.appendChild(li);
   });

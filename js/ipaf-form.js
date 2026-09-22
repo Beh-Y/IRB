@@ -681,7 +681,7 @@ class IpafFormController {
     const wasForRevision = this.record.status === 'for_revision';
 
     if (wasForRevision) {
-      // Resubmission after Secretariat's "Returned for Amendments" skips the
+      // Resubmission after Secretariat's "Return for Amendments" skips the
       // Director gate and routes straight back to the Secretariat, same as
       // the IRPF.
       const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);

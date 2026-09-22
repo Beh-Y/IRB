@@ -132,25 +132,30 @@ function renderVotingSummary(controller) {
   list.innerHTML = '';
   tallyEl.innerHTML = '';
 
+  if (controller.currentRole === 'pi') {
+    // Blinded to the PI: no reviewer identity, decision, timestamp, or
+    // tally -- IRB review is meant to stay anonymous to the PI, who only
+    // sees the substance of any feedback left. This is the one combined
+    // feedback panel for the PI, so it also covers a Secretariat's own
+    // "Return for Amendments" comment (from triage, under-review-action,
+    // or collate) and leadership's -- not gated on members ever having
+    // been assigned, since a triage-stage return has none.
+    heading.textContent = 'Reviewer Feedback';
+    const comments = [
+      ...controller.getVotes().map((v) => v.comment),
+      ...controller.getLeadershipApprovals().map((a) => a.comment),
+      ...getReturnedForAmendmentsNotes(controller.record),
+    ];
+    const hasComments = renderBlindedReviewComments(list, comments);
+    container.hidden = !hasComments;
+    return;
+  }
+
   const assigned = controller.getAssignedMembers();
   if (assigned.length === 0) {
     container.hidden = true;
     return;
   }
-
-  if (controller.currentRole === 'pi') {
-    // Blinded to the PI: no reviewer identity, decision, timestamp, or
-    // tally -- IRB Member review is meant to stay anonymous to the PI,
-    // who only sees the substance of any feedback left.
-    heading.textContent = 'Reviewer Feedback';
-    const hasComments = renderBlindedReviewComments(
-      list,
-      controller.getVotes().map((v) => v.comment)
-    );
-    container.hidden = !hasComments;
-    return;
-  }
-
   container.hidden = false;
   heading.textContent = 'IRB Member Panel';
 
@@ -197,23 +202,19 @@ function renderLeadershipSummary(controller) {
   list.innerHTML = '';
   tallyEl.innerHTML = '';
 
-  const record = controller.record;
-  const everReached = record.status === 'pending_leadership_approval' || controller.getLeadershipApprovals().length > 0;
-  if (!everReached) {
+  if (controller.currentRole === 'pi') {
+    // Leadership's feedback (and everything else relevant) is already
+    // folded into the single "Reviewer Feedback" panel rendered by
+    // renderVotingSummary, so this separate panel just stays out of the
+    // PI's way entirely rather than showing a redundant/empty duplicate.
     container.hidden = true;
     return;
   }
 
-  if (controller.currentRole === 'pi') {
-    // Blinded to the PI: no reviewer identity, decision, timestamp, or
-    // tally -- IRB Leadership review is meant to stay anonymous to the
-    // PI, who only sees the substance of any feedback left.
-    heading.textContent = 'Reviewer Feedback';
-    const hasComments = renderBlindedReviewComments(
-      list,
-      controller.getLeadershipApprovals().map((a) => a.comment)
-    );
-    container.hidden = !hasComments;
+  const record = controller.record;
+  const everReached = record.status === 'pending_leadership_approval' || controller.getLeadershipApprovals().length > 0;
+  if (!everReached) {
+    container.hidden = true;
     return;
   }
 

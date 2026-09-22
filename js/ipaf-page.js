@@ -74,25 +74,26 @@ function renderVotingSummary(controller) {
   list.innerHTML = '';
   tallyEl.innerHTML = '';
 
+  if (controller.currentRole === 'pi') {
+    // Blinded to the PI: no reviewer identity, decision, timestamp, or
+    // tally -- IRB review is meant to stay anonymous to the PI, who only
+    // sees the substance of any feedback left. This is the one combined
+    // feedback panel for the PI, so it also covers a Secretariat's own
+    // "Return for Amendments" comment (from triage or collate) -- not
+    // gated on members ever having been assigned, since a triage-stage
+    // return has none.
+    heading.textContent = 'Reviewer Feedback';
+    const comments = [...controller.getVotes().map((v) => v.comment), ...getReturnedForAmendmentsNotes(controller.record)];
+    const hasComments = renderBlindedReviewComments(list, comments);
+    container.hidden = !hasComments;
+    return;
+  }
+
   const assigned = controller.getAssignedMembers();
   if (assigned.length === 0) {
     container.hidden = true;
     return;
   }
-
-  if (controller.currentRole === 'pi') {
-    // Blinded to the PI: no reviewer identity, decision, timestamp, or
-    // tally -- IRB Member review is meant to stay anonymous to the PI,
-    // who only sees the substance of any feedback left.
-    heading.textContent = 'Reviewer Feedback';
-    const hasComments = renderBlindedReviewComments(
-      list,
-      controller.getVotes().map((v) => v.comment)
-    );
-    container.hidden = !hasComments;
-    return;
-  }
-
   container.hidden = false;
   heading.textContent = 'IRB Member Panel';
 

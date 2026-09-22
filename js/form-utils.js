@@ -84,6 +84,17 @@ function goToDashboardWithMessage(message, type) {
   window.location.href = 'index.html';
 }
 
+/* The comment attached to a Secretariat "Return for Amendments" action
+ * (from the triage, under-review-action, or collate panel -- they all call
+ * the same controller method) lives in the record's history, not in
+ * votes/leadershipApprovals, since that action doesn't require a member or
+ * leadership vote to have happened first (e.g. a triage-stage return has
+ * neither). Collecting these lets the PI's blinded feedback panel show a
+ * reason even when no vote exists yet. */
+function getReturnedForAmendmentsNotes(record) {
+  return (record.history || []).filter((h) => h.action === 'returned_for_amendments').map((h) => h.note);
+}
+
 /* Renders a blinded list of just the review comments left so far -- no
  * reviewer identity, decision, timestamp, or tally -- used for the PI's
  * view of a reviewer-panel summary (IRB Member Panel / IRB Leadership
@@ -92,7 +103,11 @@ function goToDashboardWithMessage(message, type) {
  * entirely when there's nothing to show yet. */
 function renderBlindedReviewComments(list, comments) {
   list.innerHTML = '';
-  const nonEmpty = comments.filter((c) => c && c.trim());
+  // De-duplicated since a Secretariat's "Return for Amendments" note and a
+  // member/leadership vote's comment can legitimately be the same text
+  // (e.g. the Secretariat just forwards the member's wording) -- no need
+  // to show it to the PI twice.
+  const nonEmpty = [...new Set(comments.filter((c) => c && c.trim()))];
   nonEmpty.forEach((comment) => {
     const li = document.createElement('li');
     const note = document.createElement('div');

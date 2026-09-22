@@ -84,6 +84,26 @@ function goToDashboardWithMessage(message, type) {
   window.location.href = 'index.html';
 }
 
+/* Renders a blinded list of just the review comments left so far -- no
+ * reviewer identity, decision, timestamp, or tally -- used for the PI's
+ * view of a reviewer-panel summary (IRB Member Panel / IRB Leadership
+ * Approval), since review is meant to stay anonymous to the PI. Returns
+ * true if anything was rendered, so the caller can hide the panel
+ * entirely when there's nothing to show yet. */
+function renderBlindedReviewComments(list, comments) {
+  list.innerHTML = '';
+  const nonEmpty = comments.filter((c) => c && c.trim());
+  nonEmpty.forEach((comment) => {
+    const li = document.createElement('li');
+    const note = document.createElement('div');
+    note.className = 'activity-note';
+    note.textContent = comment;
+    li.appendChild(note);
+    list.appendChild(li);
+  });
+  return nonEmpty.length > 0;
+}
+
 /* Clones an action-button row (e.g. the bottom `.form-actions` bar, or a
  * contextual panel's `.triage-actions` row) into `targetContainer` so the
  * same actions are reachable from both the top and bottom of the form.

@@ -126,6 +126,7 @@ function renderActivityLog(record) {
 
 function renderVotingSummary(controller) {
   const container = document.getElementById('voting-summary');
+  const heading = document.getElementById('voting-summary-heading');
   const list = document.getElementById('votes-list');
   const tallyEl = document.getElementById('voting-tally');
   list.innerHTML = '';
@@ -136,7 +137,22 @@ function renderVotingSummary(controller) {
     container.hidden = true;
     return;
   }
+
+  if (controller.currentRole === 'pi') {
+    // Blinded to the PI: no reviewer identity, decision, timestamp, or
+    // tally -- IRB Member review is meant to stay anonymous to the PI,
+    // who only sees the substance of any feedback left.
+    heading.textContent = 'Reviewer Feedback';
+    const hasComments = renderBlindedReviewComments(
+      list,
+      controller.getVotes().map((v) => v.comment)
+    );
+    container.hidden = !hasComments;
+    return;
+  }
+
   container.hidden = false;
+  heading.textContent = 'IRB Member Panel';
 
   const tally = controller.voteTally();
   const chips = [
@@ -175,6 +191,7 @@ function renderVotingSummary(controller) {
 
 function renderLeadershipSummary(controller) {
   const container = document.getElementById('leadership-summary');
+  const heading = document.getElementById('leadership-summary-heading');
   const list = document.getElementById('leadership-approvals-list');
   const tallyEl = document.getElementById('leadership-tally');
   list.innerHTML = '';
@@ -186,7 +203,22 @@ function renderLeadershipSummary(controller) {
     container.hidden = true;
     return;
   }
+
+  if (controller.currentRole === 'pi') {
+    // Blinded to the PI: no reviewer identity, decision, timestamp, or
+    // tally -- IRB Leadership review is meant to stay anonymous to the
+    // PI, who only sees the substance of any feedback left.
+    heading.textContent = 'Reviewer Feedback';
+    const hasComments = renderBlindedReviewComments(
+      list,
+      controller.getLeadershipApprovals().map((a) => a.comment)
+    );
+    container.hidden = !hasComments;
+    return;
+  }
+
   container.hidden = false;
+  heading.textContent = 'IRB Leadership Approval';
 
   const approvals = controller.getLeadershipApprovals();
   const tally = controller.leadershipTally();

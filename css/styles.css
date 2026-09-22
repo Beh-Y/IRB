@@ -631,8 +631,14 @@ body {
   padding: 2rem 0;
 }
 
+/* Lives inside #app-header, which is full-width (outside <main class="page">),
+ * so without this it wouldn't line up with the page's own 900px/1.5rem
+ * max-width+padding -- match those exactly so the top bar sits flush with
+ * the form content beneath it instead of the browser edge. */
 .top-actions {
-  margin-bottom: 1.25rem;
+  max-width: 900px;
+  margin: 0 auto 1.25rem;
+  padding: 0.75rem 1.5rem 0;
 }
 
 .top-actions .form-actions,

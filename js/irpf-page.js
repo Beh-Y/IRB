@@ -103,7 +103,13 @@ function renderActivityLog(record) {
     return;
   }
 
+  // Open by default whenever there's something to show -- every action
+  // now redirects straight to the dashboard, so the user never sees this
+  // update happen in front of them; requiring an extra click to expand a
+  // collapsed log on top of that made updates easy to miss entirely.
+  // Still collapsible -- the user can close it themselves.
   container.hidden = false;
+  container.open = true;
   [...record.history].reverse().forEach((entry) => {
     const li = document.createElement('li');
 

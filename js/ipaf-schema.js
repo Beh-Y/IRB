@@ -143,6 +143,10 @@ const IPAF_SCHEMA = [
     id: 'sectionK',
     title: 'Section K – Declaration by PI',
     intro: IPAF_DECLARATION_STATEMENTS,
+    // Each declaration is a long statement paired with a short control --
+    // two per row leaves too little width for the text, so this section
+    // stays one field per row instead of the usual two-column grid.
+    singleColumn: true,
     fields: [
       {
         id: 'declarationAgree',

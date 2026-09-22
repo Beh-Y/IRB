@@ -233,12 +233,18 @@ class IpafFormController {
         sectionEl.appendChild(list);
       }
 
-      const grid = document.createElement('div');
-      grid.className = 'field-grid';
-      section.fields.forEach((field) => {
-        grid.appendChild(this.buildFieldRow(field));
-      });
-      sectionEl.appendChild(grid);
+      if (section.singleColumn) {
+        section.fields.forEach((field) => {
+          sectionEl.appendChild(this.buildFieldRow(field));
+        });
+      } else {
+        const grid = document.createElement('div');
+        grid.className = 'field-grid';
+        section.fields.forEach((field) => {
+          grid.appendChild(this.buildFieldRow(field));
+        });
+        sectionEl.appendChild(grid);
+      }
 
       container.appendChild(sectionEl);
     });

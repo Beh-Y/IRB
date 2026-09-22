@@ -22,6 +22,10 @@ const PCDF_SCHEMA = [
   {
     id: 'declaration',
     title: 'Declaration',
+    // Each declaration is a long statement paired with a short Yes/N.A.
+    // control -- two per row leaves too little width for the text, so this
+    // section stays one field per row instead of the usual two-column grid.
+    singleColumn: true,
     fields: [
       {
         id: 'declIrbSubmittedApproved',

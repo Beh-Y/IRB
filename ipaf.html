@@ -26,7 +26,7 @@
         Route this IPAF to the IRB Member panel for review. Once they send their review back, you'll be able to
         record the final outcome.
       </p>
-      <label for="triage-comment">Comment (optional)</label>
+      <label for="triage-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
       <textarea id="triage-comment" rows="3"></textarea>
 
       <label>Route to IRB Members</label>
@@ -35,6 +35,7 @@
       <div id="triage-error" class="field-error"></div>
       <div class="triage-actions">
         <button id="btn-route-to-members" type="button" class="btn btn-primary">Route to IRB Members for Review</button>
+        <button id="btn-triage-return-amendments" type="button" class="btn btn-secondary">Returned for Amendments</button>
       </div>
     </div>
 

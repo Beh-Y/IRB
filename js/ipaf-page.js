@@ -154,6 +154,7 @@ function initIpafPage() {
   const triageComment = document.getElementById('triage-comment');
   const triageError = document.getElementById('triage-error');
   const routeToMembersBtn = document.getElementById('btn-route-to-members');
+  const triageReturnAmendmentsBtn = document.getElementById('btn-triage-return-amendments');
   const voteFormPanel = document.getElementById('vote-form-panel');
   const voterIdentityEl = document.getElementById('voter-identity');
   const voteCommentInput = document.getElementById('vote-comment');
@@ -264,6 +265,15 @@ function initIpafPage() {
     }
     const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
     goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
+  });
+
+  triageReturnAmendmentsBtn.addEventListener('click', () => {
+    const result = controller.returnForAmendments(triageComment.value);
+    if (!result.ok) {
+      triageError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
   });
 
   castVoteBtn.addEventListener('click', () => {

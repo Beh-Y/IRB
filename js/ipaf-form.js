@@ -183,6 +183,30 @@ class IpafFormController {
     return { ok: true };
   }
 
+  /* Secretariat can re-route to IRB Members from the collate panel (this is
+   * the same "act once a vote is in" stage as the IRPF's under-review
+   * action panel, just combined here with the final decision since IPAF
+   * has no leadership tier to route to instead) without discarding votes
+   * already cast -- unlike routeToMembersForReview()'s fresh review at
+   * triage, this just updates who's assigned so a straggler or an added
+   * member can weigh in. */
+  routeToMembersFromUnderReview(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
+    }
+    this.record.assignedMembers = assigned;
+    this.record.status = 'under_review';
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
+    saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for review: ${memberLabels}.`,
+    });
+    return { ok: true };
+  }
+
   approveIpaf(comment) {
     this.record.status = 'approved';
     saveSubmission(this.record, {

@@ -72,8 +72,13 @@
       <p id="under-review-action-hint" class="triage-hint"></p>
       <label for="under-review-action-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
       <textarea id="under-review-action-comment" rows="3"></textarea>
+
+      <label>Route to IRB Members <span class="triage-hint-inline">(existing votes are kept)</span></label>
+      <div id="under-review-member-checkboxes" class="checkbox-group"></div>
+
       <div id="under-review-action-error" class="field-error"></div>
       <div class="triage-actions">
+        <button id="btn-under-review-route-to-members" type="button" class="btn btn-secondary">Route to IRB Members</button>
         <button id="btn-route-to-leadership" type="button" class="btn btn-primary">
           Route to Co-Chairman &amp; Chairman for Approval
         </button>
@@ -107,8 +112,13 @@
       <p id="collate-hint" class="triage-hint"></p>
       <label for="collate-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
       <textarea id="collate-comment" rows="3"></textarea>
+
+      <label>Route to IRB Members <span class="triage-hint-inline">(clears Leadership approvals)</span></label>
+      <div id="collate-member-checkboxes" class="checkbox-group"></div>
+
       <div id="collate-error" class="field-error"></div>
       <div class="triage-actions">
+        <button id="btn-collate-route-to-members" type="button" class="btn btn-secondary">Route to IRB Members</button>
         <button id="btn-approve-exemption" type="button" class="btn btn-primary">Approved for Exemption</button>
         <button id="btn-return-amendments" type="button" class="btn btn-secondary">Return for Amendments</button>
         <button id="btn-create-ipaf" type="button" class="btn btn-secondary">To Create IPAF</button>

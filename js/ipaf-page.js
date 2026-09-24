@@ -9,8 +9,8 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
-function renderTriageMemberCheckboxes(selected) {
-  const container = document.getElementById('triage-member-checkboxes');
+function renderMemberCheckboxes(containerId, selected) {
+  const container = document.getElementById(containerId);
   container.innerHTML = '';
   IRB_MEMBER_IDS.forEach((id) => {
     const label = document.createElement('label');
@@ -24,8 +24,8 @@ function renderTriageMemberCheckboxes(selected) {
   });
 }
 
-function getCheckedMemberIds() {
-  return Array.from(document.querySelectorAll('#triage-member-checkboxes input:checked')).map((el) => el.value);
+function getCheckedMemberIds(containerId) {
+  return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((el) => el.value);
 }
 
 function showBanner(message, type) {
@@ -211,7 +211,8 @@ function initIpafPage() {
   renderActivityLog(record, role);
   renderCommentsPanel(controller);
   renderVotingSummary(controller);
-  renderTriageMemberCheckboxes(record.assignedMembers);
+  renderMemberCheckboxes('triage-member-checkboxes', record.assignedMembers);
+  renderMemberCheckboxes('collate-member-checkboxes', record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
@@ -230,6 +231,7 @@ function initIpafPage() {
   const collatePanel = document.getElementById('collate-panel');
   const collateComment = document.getElementById('collate-comment');
   const collateError = document.getElementById('collate-error');
+  const collateRouteToMembersBtn = document.getElementById('btn-collate-route-to-members');
   const approveIpafBtn = document.getElementById('btn-approve-ipaf');
   const returnAmendmentsBtn = document.getElementById('btn-return-amendments');
   const piCommentPanel = document.getElementById('pi-comment-panel');
@@ -325,7 +327,7 @@ function initIpafPage() {
 
   routeToMembersBtn.addEventListener('click', () => {
     const comment = triageComment.value;
-    const result = controller.routeToMembersForReview(comment, getCheckedMemberIds());
+    const result = controller.routeToMembersForReview(comment, getCheckedMemberIds('triage-member-checkboxes'));
     if (!result.ok) {
       triageError.textContent = result.error;
       return;
@@ -364,11 +366,17 @@ function initIpafPage() {
       goToDashboardWithMessage('This IPAF is approved.', 'success');
     } else if (record.status === 'for_revision') {
       goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
+    } else if (record.status === 'under_review') {
+      const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
+      goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
     } else {
       goToDashboardWithMessage('Decision recorded.', 'success');
     }
   }
 
+  collateRouteToMembersBtn.addEventListener('click', () =>
+    handleCollateDecision((c) => controller.routeToMembersFromUnderReview(c, getCheckedMemberIds('collate-member-checkboxes')))
+  );
   approveIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.approveIpaf(c)));
   returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
 

@@ -774,6 +774,52 @@ class IrpfFormController {
     return { ok: true };
   }
 
+  /* Secretariat can re-route to IRB Members from the under-review action
+   * panel without discarding votes already cast -- unlike
+   * routeToMembersForReview()'s fresh review at triage, this just updates
+   * who's assigned so a straggler or an added member can weigh in. */
+  routeToMembersFromUnderReview(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IRPF to.' };
+    }
+    this.record.assignedMembers = assigned;
+    this.record.status = 'under_review';
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
+    saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for review: ${memberLabels}.`,
+    });
+    return { ok: true };
+  }
+
+  /* Secretariat can send a collated IRPF (Leadership has already voted)
+   * back to the IRB Member panel -- e.g. if Leadership's decision surfaces
+   * a gap that needs fresh member input. Leadership approvals are
+   * discarded, since they'd need to vote again once it gets back to them;
+   * existing member votes are kept, same as routeToMembersFromUnderReview(). */
+  routeToMembersFromCollate(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IRPF to.' };
+    }
+    this.record.assignedMembers = assigned;
+    this.record.leadershipApprovals = [];
+    this.record.status = 'under_review';
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
+    saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment
+        ? `${comment} Routed to: ${memberLabels}. Leadership approvals cleared.`
+        : `Routed to the IRB Member panel for review: ${memberLabels}. Leadership approvals cleared.`,
+    });
+    return { ok: true };
+  }
+
   /* One of the Secretariat's three final decisions, available once all assigned members have voted. */
   decideToCreateIpaf(comment) {
     this.record.status = 'to_create_ipaf';

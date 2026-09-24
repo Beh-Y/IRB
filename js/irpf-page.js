@@ -67,8 +67,8 @@ function createChildIpaf(irpfRecord, actorRole) {
   return ipafRecord;
 }
 
-function renderTriageMemberCheckboxes(selected) {
-  const container = document.getElementById('triage-member-checkboxes');
+function renderMemberCheckboxes(containerId, selected) {
+  const container = document.getElementById(containerId);
   container.innerHTML = '';
   IRB_MEMBER_IDS.forEach((id) => {
     const label = document.createElement('label');
@@ -82,8 +82,8 @@ function renderTriageMemberCheckboxes(selected) {
   });
 }
 
-function getCheckedMemberIds() {
-  return Array.from(document.querySelectorAll('#triage-member-checkboxes input:checked')).map((el) => el.value);
+function getCheckedMemberIds(containerId) {
+  return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((el) => el.value);
 }
 
 function showBanner(message, type) {
@@ -345,7 +345,9 @@ function initIrpfPage() {
   renderCommentsPanel(controller);
   renderVotingSummary(controller);
   renderLeadershipSummary(controller);
-  renderTriageMemberCheckboxes(record.assignedMembers);
+  renderMemberCheckboxes('triage-member-checkboxes', record.assignedMembers);
+  renderMemberCheckboxes('under-review-member-checkboxes', record.assignedMembers);
+  renderMemberCheckboxes('collate-member-checkboxes', record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
@@ -373,8 +375,10 @@ function initIrpfPage() {
   const underReviewActionPanel = document.getElementById('under-review-action-panel');
   const underReviewActionCommentInput = document.getElementById('under-review-action-comment');
   const underReviewActionError = document.getElementById('under-review-action-error');
+  const underReviewRouteToMembersBtn = document.getElementById('btn-under-review-route-to-members');
   const routeToLeadershipBtn = document.getElementById('btn-route-to-leadership');
   const returnAmendmentsEarlyBtn = document.getElementById('btn-return-amendments-early');
+  const collateRouteToMembersBtn = document.getElementById('btn-collate-route-to-members');
   const leadershipApprovalPanel = document.getElementById('leadership-approval-panel');
   const leadershipIdentityEl = document.getElementById('leadership-identity');
   const leadershipCommentInput = document.getElementById('leadership-comment');
@@ -514,7 +518,7 @@ function initIrpfPage() {
 
   routeToMembersBtn.addEventListener('click', () => {
     const comment = triageComment.value;
-    const result = controller.routeToMembersForReview(comment, getCheckedMemberIds());
+    const result = controller.routeToMembersForReview(comment, getCheckedMemberIds('triage-member-checkboxes'));
     if (!result.ok) {
       triageError.textContent = result.error;
       return;
@@ -545,6 +549,19 @@ function initIrpfPage() {
       return;
     }
     goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
+  });
+
+  underReviewRouteToMembersBtn.addEventListener('click', () => {
+    const result = controller.routeToMembersFromUnderReview(
+      underReviewActionCommentInput.value,
+      getCheckedMemberIds('under-review-member-checkboxes')
+    );
+    if (!result.ok) {
+      underReviewActionError.textContent = result.error;
+      return;
+    }
+    const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
+    goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
   });
 
   routeToLeadershipBtn.addEventListener('click', () => {
@@ -582,11 +599,17 @@ function initIrpfPage() {
       goToDashboardWithMessage(describeFinalOutcome(record), 'success');
     } else if (record.status === 'for_revision') {
       goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
+    } else if (record.status === 'under_review') {
+      const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
+      goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
     } else {
       goToDashboardWithMessage('Decision recorded.', 'success');
     }
   }
 
+  collateRouteToMembersBtn.addEventListener('click', () =>
+    handleCollateDecision((c) => controller.routeToMembersFromCollate(c, getCheckedMemberIds('collate-member-checkboxes')))
+  );
   approveExemptionBtn.addEventListener('click', () => handleCollateDecision((c) => controller.approveForExemption(c)));
   returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
   createIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.decideToCreateIpaf(c)));

@@ -150,9 +150,11 @@ function exportRowsToExcel(rows, sheetName, filenamePrefix) {
 
 /* Exports exactly what's in one table as a PDF via jsPDF + its autoTable
  * plugin (also vendored locally, same reasoning as the Excel export). An
- * IPAF's Reference No. gets a "↳" prefix in place of the CSS indentation
+ * IPAF's Reference No. gets a ">" prefix in place of the CSS indentation
  * used on screen, since a flat PDF table has no other way to show the
- * parent-child grouping. */
+ * parent-child grouping -- plain ASCII rather than the "↳" arrow used on
+ * screen, since jsPDF's default font (Helvetica, WinAnsi-encoded) can't
+ * render that character and was garbling the whole cell. */
 function exportRowsToPdf(rows, title, filenamePrefix) {
   if (typeof window.jspdf === 'undefined') {
     alert('Could not export to PDF: the export library failed to load. Check your internet connection and try again.');
@@ -170,7 +172,7 @@ function exportRowsToPdf(rows, title, filenamePrefix) {
 
   const columns = rows.length > 0 ? Object.keys(rows[0]).filter((key) => !key.startsWith('__')) : [];
   const body = rows.map((row) =>
-    columns.map((col) => (row.__isChild && col === 'Reference No.' ? `↳ ${row[col]}` : row[col]))
+    columns.map((col) => (row.__isChild && col === 'Reference No.' ? `> ${row[col]}` : row[col]))
   );
 
   doc.autoTable({

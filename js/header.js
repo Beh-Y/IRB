@@ -35,6 +35,14 @@ function renderHeader(activePage) {
       ? `<a href="admin.html" class="${activePage === 'admin' ? 'active' : ''}">Admin</a>`
       : '';
 
+  // The overall report is only meaningful (and only intended) for the
+  // Secretariat and IRB Leadership -- report.js blocks direct access by
+  // URL for everyone else regardless.
+  const reportLink =
+    isSecretariat(currentRole) || isIrbLeadership(currentRole)
+      ? `<a href="report.html" class="${activePage === 'report' ? 'active' : ''}">Report</a>`
+      : '';
+
   container.innerHTML = `
     <div class="header-bar">
       <div class="header-brand">
@@ -51,6 +59,7 @@ function renderHeader(activePage) {
         <a href="index.html" class="${activePage === 'dashboard' ? 'active' : ''}">Dashboard</a>
         <a href="submissions.html" class="${activePage === 'submissions' ? 'active' : ''}">View Project Submissions</a>
         ${newSubmissionDropdown}
+        ${reportLink}
         ${adminLink}
       </nav>
       <div class="header-role-switcher">

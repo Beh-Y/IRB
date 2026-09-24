@@ -37,6 +37,22 @@ function renderStatChips(container, counts) {
   });
 }
 
+/* The exact rows behind the "All Submissions" table, kept in sync with
+ * what's rendered so Export to Excel always exports what's on screen. */
+let reportRows = [];
+
+function buildReportRow(record) {
+  return {
+    Form: record.formType,
+    'Reference No.': record.data.refNumber || '—',
+    'Principal Investigator': getPiName(record),
+    'Project Title': record.data.projectTitle || '(untitled)',
+    Category: record.data.categoryOfResearch || '—',
+    Status: getStatusLabel(record.status, record.formType),
+    'Last Updated': record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—',
+  };
+}
+
 function renderReport() {
   const submitted = getAllSubmissions().filter((r) => r.status !== 'draft');
 
@@ -60,6 +76,7 @@ function renderReport() {
   renderStatChips(document.getElementById('report-category-stats'), categoryCounts);
 
   const sorted = sortByAnyPrefixRefNumber(submitted.slice());
+  reportRows = sorted.map(buildReportRow);
 
   const tbody = document.getElementById('report-submissions-body');
   tbody.innerHTML = '';
@@ -71,39 +88,31 @@ function renderReport() {
     return;
   }
 
-  sorted.forEach((record) => {
+  reportRows.forEach((row) => {
     const tr = document.createElement('tr');
-
-    const formCell = document.createElement('td');
-    formCell.textContent = record.formType;
-
-    const refCell = document.createElement('td');
-    refCell.textContent = record.data.refNumber || '—';
-
-    const piCell = document.createElement('td');
-    piCell.textContent = getPiName(record);
-
-    const titleCell = document.createElement('td');
-    titleCell.textContent = record.data.projectTitle || '(untitled)';
-
-    const categoryCell = document.createElement('td');
-    categoryCell.textContent = record.data.categoryOfResearch || '—';
-
-    const statusCell = document.createElement('td');
-    statusCell.textContent = getStatusLabel(record.status, record.formType);
-
-    const updatedCell = document.createElement('td');
-    updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';
-
-    tr.appendChild(formCell);
-    tr.appendChild(refCell);
-    tr.appendChild(piCell);
-    tr.appendChild(titleCell);
-    tr.appendChild(categoryCell);
-    tr.appendChild(statusCell);
-    tr.appendChild(updatedCell);
+    Object.values(row).forEach((value) => {
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    });
     tbody.appendChild(tr);
   });
+}
+
+/* Exports exactly what's in the "All Submissions" table as a real .xlsx
+ * file via SheetJS (loaded from a CDN -- this app has no build step or
+ * bundled dependencies, so generating a genuine Excel file client-side
+ * needs the library available on the page). */
+function exportReportToExcel() {
+  if (typeof XLSX === 'undefined') {
+    alert('Could not export to Excel: the export library failed to load. Check your internet connection and try again.');
+    return;
+  }
+  const worksheet = XLSX.utils.json_to_sheet(reportRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'All Submissions');
+  const today = new Date().toISOString().slice(0, 10);
+  XLSX.writeFile(workbook, `IRB-Report-${today}.xlsx`);
 }
 
 function initReportPage() {
@@ -120,6 +129,7 @@ function initReportPage() {
   }
 
   renderReport();
+  document.getElementById('btn-export-excel').addEventListener('click', exportReportToExcel);
 }
 
 document.addEventListener('DOMContentLoaded', initReportPage);

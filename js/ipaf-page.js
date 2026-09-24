@@ -84,22 +84,33 @@ function renderActivityLog(record) {
  * the IRPF panel.) */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
+  const heading = document.getElementById('comments-panel-heading');
   const list = document.getElementById('comments-panel-list');
 
   const role = controller.currentRole;
-  if (!isSecretariat(role) && !isIrbMember(role) && !isIrbLeadership(role)) {
+  const isStaffReviewer = isSecretariat(role) || isIrbMember(role) || isIrbLeadership(role);
+  if (!isStaffReviewer && role !== 'pi') {
     container.hidden = true;
     return;
   }
 
-  const entries = [
-    ...controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp })),
-    ...(controller.record.history || [])
-      .filter((h) => h.action === 'returned_for_amendments')
-      .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp })),
-  ];
+  const memberEntries = controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp }));
+  const secretariatEntries = (controller.record.history || [])
+    .filter((h) => h.action === 'returned_for_amendments')
+    .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp }));
 
-  const hasComments = renderIdentifiedReviewComments(list, entries);
+  if (role === 'pi') {
+    heading.textContent = 'Reviewer Feedback';
+    const hasComments = renderBlindedReviewComments(
+      list,
+      [...memberEntries, ...secretariatEntries].map((e) => e.comment)
+    );
+    container.hidden = !hasComments;
+    return;
+  }
+
+  heading.textContent = 'Comments';
+  const hasComments = renderIdentifiedReviewComments(list, [...memberEntries, ...secretariatEntries]);
   container.hidden = !hasComments;
 }
 
@@ -112,17 +123,10 @@ function renderVotingSummary(controller) {
   tallyEl.innerHTML = '';
 
   if (controller.currentRole === 'pi') {
-    // Blinded to the PI: no reviewer identity, decision, timestamp, or
-    // tally -- IRB review is meant to stay anonymous to the PI, who only
-    // sees the substance of any feedback left. This is the one combined
-    // feedback panel for the PI, so it also covers a Secretariat's own
-    // "Return for Amendments" comment (from triage or collate) -- not
-    // gated on members ever having been assigned, since a triage-stage
-    // return has none.
-    heading.textContent = 'Reviewer Feedback';
-    const comments = [...controller.getVotes().map((v) => v.comment), ...getReturnedForAmendmentsNotes(controller.record)];
-    const hasComments = renderBlindedReviewComments(list, comments);
-    container.hidden = !hasComments;
+    // The PI's blinded feedback now lives in the top-of-page Comments
+    // panel (renderCommentsPanel) instead, so this mid-page panel just
+    // stays out of the way rather than showing the same thing twice.
+    container.hidden = true;
     return;
   }
 

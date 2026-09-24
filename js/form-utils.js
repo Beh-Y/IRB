@@ -84,17 +84,6 @@ function goToDashboardWithMessage(message, type) {
   window.location.href = 'index.html';
 }
 
-/* The comment attached to a Secretariat "Return for Amendments" action
- * (from the triage, under-review-action, or collate panel -- they all call
- * the same controller method) lives in the record's history, not in
- * votes/leadershipApprovals, since that action doesn't require a member or
- * leadership vote to have happened first (e.g. a triage-stage return has
- * neither). Collecting these lets the PI's blinded feedback panel show a
- * reason even when no vote exists yet. */
-function getReturnedForAmendmentsNotes(record) {
-  return (record.history || []).filter((h) => h.action === 'returned_for_amendments').map((h) => h.note);
-}
-
 /* Renders a fully blinded list of just the review comments left so far --
  * no reviewer identity, no source body (member/leadership/Secretariat), no
  * decision, no timestamp, no tally -- used for the PI's view of a

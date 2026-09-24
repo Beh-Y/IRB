@@ -130,35 +130,48 @@ function renderActivityLog(record) {
   });
 }
 
-/* Top-of-page panel for staff reviewers (Secretariat, IRB Members, IRB
- * Leadership): every comment left so far -- from IRB Member votes, IRB
- * Leadership votes, and the Secretariat's own past "Return for
+/* Top-of-page panel showing every comment left so far -- from IRB Member
+ * votes, IRB Leadership votes, and the Secretariat's own past "Return for
  * Amendments" notes (from triage, under-review-action, or collate) -- in
- * one place, each with the specific reviewer's identity, their decision,
- * and when, newest first. Unlike the PI's blinded "Reviewer Feedback"
- * panel further down the page, this one fully identifies who said what,
- * so anyone reviewing has the whole picture before acting. */
+ * one place, newest first. Staff reviewers (Secretariat, IRB Members, IRB
+ * Leadership) see it fully identified: who left each one and their
+ * decision. The PI sees the same combined comments here too, but
+ * blinded -- just the text, no identity, decision, or tally -- since
+ * review is meant to stay anonymous to the PI. This is now the PI's one
+ * feedback panel; the mid-page IRB Member Panel / IRB Leadership Approval
+ * panels stay hidden for the PI to avoid showing the same thing twice. */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
+  const heading = document.getElementById('comments-panel-heading');
   const list = document.getElementById('comments-panel-list');
 
   const role = controller.currentRole;
-  if (!isSecretariat(role) && !isIrbMember(role) && !isIrbLeadership(role)) {
+  const isStaffReviewer = isSecretariat(role) || isIrbMember(role) || isIrbLeadership(role);
+  if (!isStaffReviewer && role !== 'pi') {
     container.hidden = true;
     return;
   }
 
-  const entries = [
-    ...controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp })),
-    ...controller
-      .getLeadershipApprovals()
-      .map((a) => ({ identity: a.approverName, decision: a.decision, comment: a.comment, timestamp: a.timestamp })),
-    ...(controller.record.history || [])
-      .filter((h) => h.action === 'returned_for_amendments')
-      .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp })),
-  ];
+  const memberEntries = controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp }));
+  const leadershipEntries = controller
+    .getLeadershipApprovals()
+    .map((a) => ({ identity: a.approverName, decision: a.decision, comment: a.comment, timestamp: a.timestamp }));
+  const secretariatEntries = (controller.record.history || [])
+    .filter((h) => h.action === 'returned_for_amendments')
+    .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp }));
 
-  const hasComments = renderIdentifiedReviewComments(list, entries);
+  if (role === 'pi') {
+    heading.textContent = 'Reviewer Feedback';
+    const hasComments = renderBlindedReviewComments(
+      list,
+      [...memberEntries, ...leadershipEntries, ...secretariatEntries].map((e) => e.comment)
+    );
+    container.hidden = !hasComments;
+    return;
+  }
+
+  heading.textContent = 'Comments';
+  const hasComments = renderIdentifiedReviewComments(list, [...memberEntries, ...leadershipEntries, ...secretariatEntries]);
   container.hidden = !hasComments;
 }
 
@@ -171,21 +184,10 @@ function renderVotingSummary(controller) {
   tallyEl.innerHTML = '';
 
   if (controller.currentRole === 'pi') {
-    // Blinded to the PI: no reviewer identity, decision, timestamp, or
-    // tally -- IRB review is meant to stay anonymous to the PI, who only
-    // sees the substance of any feedback left. This is the one combined
-    // feedback panel for the PI, so it also covers a Secretariat's own
-    // "Return for Amendments" comment (from triage, under-review-action,
-    // or collate) and leadership's -- not gated on members ever having
-    // been assigned, since a triage-stage return has none.
-    heading.textContent = 'Reviewer Feedback';
-    const comments = [
-      ...controller.getVotes().map((v) => v.comment),
-      ...controller.getLeadershipApprovals().map((a) => a.comment),
-      ...getReturnedForAmendmentsNotes(controller.record),
-    ];
-    const hasComments = renderBlindedReviewComments(list, comments);
-    container.hidden = !hasComments;
+    // The PI's blinded feedback now lives in the top-of-page Comments
+    // panel (renderCommentsPanel) instead, so this mid-page panel just
+    // stays out of the way rather than showing the same thing twice.
+    container.hidden = true;
     return;
   }
 
@@ -242,9 +244,9 @@ function renderLeadershipSummary(controller) {
 
   if (controller.currentRole === 'pi') {
     // Leadership's feedback (and everything else relevant) is already
-    // folded into the single "Reviewer Feedback" panel rendered by
-    // renderVotingSummary, so this separate panel just stays out of the
-    // PI's way entirely rather than showing a redundant/empty duplicate.
+    // folded into the top-of-page Comments panel (renderCommentsPanel),
+    // so this separate panel just stays out of the PI's way entirely
+    // rather than showing a redundant/empty duplicate.
     container.hidden = true;
     return;
   }

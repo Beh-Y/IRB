@@ -93,12 +93,20 @@ function showBanner(message, type) {
   banner.hidden = false;
 }
 
-function renderActivityLog(record) {
+// The PI never sees the review process itself (routing, votes, returns,
+// resubmissions) -- only the milestones that are theirs to know about: their
+// initial submission, the S/D Director's approval, and the final outcome.
+const IRPF_PI_VISIBLE_ACTIONS = ['submit', 'director_approve', 'approved_for_exemption', 'to_create_ipaf'];
+
+function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
   const list = document.getElementById('activity-log-list');
   list.innerHTML = '';
 
-  if (!record.history || record.history.length === 0) {
+  const entries =
+    role === 'pi' ? (record.history || []).filter((h) => IRPF_PI_VISIBLE_ACTIONS.includes(h.action)) : record.history || [];
+
+  if (entries.length === 0) {
     container.hidden = true;
     return;
   }
@@ -110,7 +118,7 @@ function renderActivityLog(record) {
   // Still collapsible -- the user can close it themselves.
   container.hidden = false;
   container.open = true;
-  [...record.history].reverse().forEach((entry) => {
+  [...entries].reverse().forEach((entry) => {
     const li = document.createElement('li');
 
     const meta = document.createElement('div');
@@ -333,7 +341,7 @@ function initIrpfPage() {
 
   document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
   controller.mount(document.getElementById('irpf-form-container'));
-  renderActivityLog(record);
+  renderActivityLog(record, role);
   renderCommentsPanel(controller);
   renderVotingSummary(controller);
   renderLeadershipSummary(controller);

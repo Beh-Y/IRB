@@ -35,12 +35,21 @@ function showBanner(message, type) {
   banner.hidden = false;
 }
 
-function renderActivityLog(record) {
+// The PI never sees the review process itself -- only the milestones that
+// are theirs to know about: their initial submission and the S/D Director's
+// approval (which is also the final outcome for a PCDF -- there's no
+// Secretariat or IRB Member review stage).
+const PCDF_PI_VISIBLE_ACTIONS = ['submit', 'director_approve'];
+
+function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
   const list = document.getElementById('activity-log-list');
   list.innerHTML = '';
 
-  if (!record.history || record.history.length === 0) {
+  const entries =
+    role === 'pi' ? (record.history || []).filter((h) => PCDF_PI_VISIBLE_ACTIONS.includes(h.action)) : record.history || [];
+
+  if (entries.length === 0) {
     container.hidden = true;
     return;
   }
@@ -52,7 +61,7 @@ function renderActivityLog(record) {
   // Still collapsible -- the user can close it themselves.
   container.hidden = false;
   container.open = true;
-  [...record.history].reverse().forEach((entry) => {
+  [...entries].reverse().forEach((entry) => {
     const li = document.createElement('li');
 
     const meta = document.createElement('div');
@@ -81,7 +90,7 @@ function initPcdfPage() {
 
   document.getElementById('pcdf-status-badge').textContent = getStatusLabel(record.status, 'PCDF');
   controller.mount(document.getElementById('pcdf-form-container'));
-  renderActivityLog(record);
+  renderActivityLog(record, role);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');

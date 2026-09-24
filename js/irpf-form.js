@@ -181,7 +181,7 @@ class IrpfFormController {
       return { ok: false, error: 'Select Approve or Return.' };
     }
     if (decision === 'Return' && !(comment || '').trim()) {
-      return { ok: false, error: 'A comment is required when returning for revision.' };
+      return { ok: false, error: 'A comment is required when returning for amendments.' };
     }
     if (this.hasVoted(this.currentRole)) {
       return { ok: false, error: `${getRoleLabel(this.currentRole)} has already voted on this IRPF.` };
@@ -197,11 +197,23 @@ class IrpfFormController {
     };
     this.record.votes.push(vote);
 
+    let note = `${vote.voterName}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`;
+
+    /* A member's own "Return for Amendments" sends the IRPF straight back
+     * to the PI -- bypassing the Secretariat's usual collation step --
+     * rather than just being tallied for the Secretariat to act on later.
+     * Resubmission routes it back to this same member (see submit()). */
+    if (decision === 'Return') {
+      this.record.status = 'for_revision';
+      this.record.routedTo = this.currentRole;
+      note += ' Routed directly to the PI for amendments.';
+    }
+
     saveSubmission(this.record, {
       action: 'member_vote',
       actor: this.currentRole,
       status: this.record.status,
-      note: `${vote.voterName}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`,
+      note,
     });
     return { ok: true };
   }
@@ -227,7 +239,7 @@ class IrpfFormController {
       return { ok: false, error: 'Select Approve or Return.' };
     }
     if (decision === 'Return' && !(comment || '').trim()) {
-      return { ok: false, error: 'A comment is required when returning for revision.' };
+      return { ok: false, error: 'A comment is required when returning for amendments.' };
     }
     if (this.hasLeadershipVoted(this.currentRole)) {
       return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IRPF.` };
@@ -243,11 +255,22 @@ class IrpfFormController {
     };
     this.record.leadershipApprovals.push(approval);
 
+    let note = `${approval.approverName}: ${decision}${approval.comment ? ' — ' + approval.comment : ''}`;
+
+    /* Same bypass as a member's return (see castVote): sends the IRPF
+     * straight back to the PI instead of waiting on the Secretariat's
+     * collation step. Resubmission routes it back to this same leader. */
+    if (decision === 'Return') {
+      this.record.status = 'for_revision';
+      this.record.routedTo = this.currentRole;
+      note += ' Routed directly to the PI for amendments.';
+    }
+
     saveSubmission(this.record, {
       action: 'leadership_vote',
       actor: this.currentRole,
       status: this.record.status,
-      note: `${approval.approverName}: ${decision}${approval.comment ? ' — ' + approval.comment : ''}`,
+      note,
     });
     return { ok: true };
   }
@@ -632,18 +655,49 @@ class IrpfFormController {
     const wasForRevision = this.record.status === 'for_revision';
 
     if (wasForRevision) {
-      // Resubmission after Secretariat's "Return for Amendments" skips the
-      // Director gate and routes straight back to the Secretariat, per spec.
-      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
-      this.record.routedTo = secretariat;
-      this.record.status = 'pending_review';
-      const routedNote = `Resubmitted and routed to ${getRoleLabel(secretariat)}.`;
-      saveSubmission(this.record, {
-        action: 'resubmit',
-        actor: this.currentRole,
-        status: this.record.status,
-        note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
-      });
+      // Resubmission after a Return skips the Director gate either way.
+      // If a specific IRB member or leader bypassed the Secretariat to
+      // return it directly (see castVote/castLeadershipVote), it goes
+      // straight back to that same person -- reopening just their vote --
+      // instead of back through Secretariat triage.
+      const returningReviewer = this.record.routedTo;
+      const returnedByMember = isIrbMember(returningReviewer);
+      const returnedByLeader = isIrbLeadership(returningReviewer);
+
+      if (returnedByMember) {
+        this.record.votes = this.getVotes().filter((v) => v.voterId !== returningReviewer);
+        this.record.status = 'under_review';
+        const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for review.`;
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+        });
+      } else if (returnedByLeader) {
+        this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.approverId !== returningReviewer);
+        this.record.status = 'pending_leadership_approval';
+        const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for approval.`;
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+        });
+      } else {
+        // Secretariat's own return -- routes straight back to the
+        // Secretariat, per spec.
+        const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+        this.record.routedTo = secretariat;
+        this.record.status = 'pending_review';
+        const routedNote = `Resubmitted and routed to ${getRoleLabel(secretariat)}.`;
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+        });
+      }
     } else {
       this.record.status = 'pending_director_approval';
       saveSubmission(this.record, {

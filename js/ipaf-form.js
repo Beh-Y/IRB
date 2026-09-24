@@ -127,7 +127,7 @@ class IpafFormController {
       return { ok: false, error: 'Select Approve or Return.' };
     }
     if (decision === 'Return' && !(comment || '').trim()) {
-      return { ok: false, error: 'A comment is required when returning for revision.' };
+      return { ok: false, error: 'A comment is required when returning for amendments.' };
     }
     if (this.hasVoted(this.currentRole)) {
       return { ok: false, error: `${getRoleLabel(this.currentRole)} has already voted on this IPAF.` };
@@ -143,11 +143,23 @@ class IpafFormController {
     };
     this.record.votes.push(vote);
 
+    let note = `${vote.voterName}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`;
+
+    /* A member's own "Return for Amendments" sends the IPAF straight back
+     * to the PI -- bypassing the Secretariat's usual collation step --
+     * rather than just being tallied for the Secretariat to act on later.
+     * Resubmission routes it back to this same member (see submit()). */
+    if (decision === 'Return') {
+      this.record.status = 'for_revision';
+      this.record.routedTo = this.currentRole;
+      note += ' Routed directly to the PI for amendments.';
+    }
+
     saveSubmission(this.record, {
       action: 'member_vote',
       actor: this.currentRole,
       status: this.record.status,
-      note: `${vote.voterName}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`,
+      note,
     });
     return { ok: true };
   }
@@ -681,19 +693,38 @@ class IpafFormController {
     const wasForRevision = this.record.status === 'for_revision';
 
     if (wasForRevision) {
-      // Resubmission after Secretariat's "Return for Amendments" skips the
-      // Director gate and routes straight back to the Secretariat, same as
-      // the IRPF.
-      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
-      this.record.routedTo = secretariat;
-      this.record.status = 'pending_review';
-      const routedNote = `Resubmitted and routed to ${getRoleLabel(secretariat)}.`;
-      saveSubmission(this.record, {
-        action: 'resubmit',
-        actor: this.currentRole,
-        status: this.record.status,
-        note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
-      });
+      // Resubmission after a Return skips the Director gate either way.
+      // If a specific IRB member bypassed the Secretariat to return it
+      // directly (see castVote), it goes straight back to that same
+      // member -- reopening just their vote -- instead of back through
+      // Secretariat triage.
+      const returningReviewer = this.record.routedTo;
+      const returnedByMember = isIrbMember(returningReviewer);
+
+      if (returnedByMember) {
+        this.record.votes = this.getVotes().filter((v) => v.voterId !== returningReviewer);
+        this.record.status = 'under_review';
+        const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for review.`;
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+        });
+      } else {
+        // Secretariat's own return -- routes straight back to the
+        // Secretariat, same as the IRPF.
+        const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+        this.record.routedTo = secretariat;
+        this.record.status = 'pending_review';
+        const routedNote = `Resubmitted and routed to ${getRoleLabel(secretariat)}.`;
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+        });
+      }
     } else {
       this.record.status = 'pending_director_approval';
       saveSubmission(this.record, {

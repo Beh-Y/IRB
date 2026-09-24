@@ -39,7 +39,10 @@
 
       <div class="page-header page-header--spaced">
         <h1>IRPF &amp; IPAF Submissions</h1>
-        <button id="btn-export-excel" type="button" class="btn btn-secondary">Export to Excel</button>
+        <div class="report-export-actions">
+          <button id="btn-export-irpf-ipaf-excel" type="button" class="btn btn-secondary">Export to Excel</button>
+          <button id="btn-export-irpf-ipaf-pdf" type="button" class="btn btn-secondary">Export to PDF</button>
+        </div>
       </div>
 
       <div class="submissions-table-scroll">
@@ -61,6 +64,10 @@
 
       <div class="page-header page-header--spaced">
         <h1>PCDF Submissions</h1>
+        <div class="report-export-actions">
+          <button id="btn-export-pcdf-excel" type="button" class="btn btn-secondary">Export to Excel</button>
+          <button id="btn-export-pcdf-pdf" type="button" class="btn btn-secondary">Export to PDF</button>
+        </div>
       </div>
 
       <table class="submissions-table">
@@ -86,6 +93,8 @@
   <script src="js/form-utils.js"></script>
   <script src="js/dashboard.js"></script>
   <script src="js/vendor/xlsx.mini.min.js"></script>
+  <script src="js/vendor/jspdf.umd.min.js"></script>
+  <script src="js/vendor/jspdf.plugin.autotable.min.js"></script>
   <script src="js/report.js"></script>
 </body>
 </html>

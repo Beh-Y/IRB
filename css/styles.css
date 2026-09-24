@@ -166,6 +166,12 @@ body {
   margin-top: 2.5rem;
 }
 
+.report-export-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
 .status-badge {
   display: inline-block;
   padding: 0.2rem 0.6rem;

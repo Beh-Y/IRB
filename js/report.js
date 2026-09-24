@@ -37,11 +37,12 @@ function renderStatChips(container, counts) {
   });
 }
 
-/* The exact rows behind the "All Submissions" table, kept in sync with
- * what's rendered so Export to Excel always exports what's on screen. */
-let reportRows = [];
+/* The exact rows behind each table, kept in sync with what's rendered so
+ * Export to Excel always exports what's on screen (one sheet per table). */
+let reportRowsIrpfIpaf = [];
+let reportRowsPcdf = [];
 
-function buildReportRow(record) {
+function buildIrpfIpafRow(record) {
   return {
     Form: record.formType,
     'Reference No.': record.data.refNumber || '—',
@@ -51,6 +52,41 @@ function buildReportRow(record) {
     Status: getStatusLabel(record.status, record.formType),
     'Last Updated': record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—',
   };
+}
+
+function buildPcdfRow(record) {
+  return {
+    'Reference No.': record.data.refNumber || '—',
+    'Principal Investigator': getPiName(record),
+    'Project Title': record.data.projectTitle || '(untitled)',
+    Status: getStatusLabel(record.status, 'PCDF'),
+    'Last Updated': record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—',
+  };
+}
+
+function renderRowsIntoTable(tbodyId, rows, emptyMessage) {
+  const tbody = document.getElementById(tbodyId);
+  tbody.innerHTML = '';
+
+  if (rows.length === 0) {
+    const emptyRow = document.createElement('tr');
+    const colspan = tbody.closest('table').querySelectorAll('thead th').length;
+    emptyRow.innerHTML = `<td colspan="${colspan}" class="empty-state">${emptyMessage}</td>`;
+    tbody.appendChild(emptyRow);
+    return;
+  }
+
+  rows.forEach((row) => {
+    const tr = document.createElement('tr');
+    if (row.__isChild) tr.classList.add('child-row');
+    Object.entries(row).forEach(([key, value]) => {
+      if (key.startsWith('__')) return;
+      const td = document.createElement('td');
+      td.textContent = value;
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
 }
 
 function renderReport() {
@@ -75,42 +111,37 @@ function renderReport() {
   renderStatChips(document.getElementById('report-status-stats'), statusCounts);
   renderStatChips(document.getElementById('report-category-stats'), categoryCounts);
 
-  const sorted = sortByAnyPrefixRefNumber(submitted.slice());
-  reportRows = sorted.map(buildReportRow);
-
-  const tbody = document.getElementById('report-submissions-body');
-  tbody.innerHTML = '';
-
-  if (sorted.length === 0) {
-    const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = '<td colspan="7" class="empty-state">No projects have been submitted yet.</td>';
-    tbody.appendChild(emptyRow);
-    return;
-  }
-
-  reportRows.forEach((row) => {
-    const tr = document.createElement('tr');
-    Object.values(row).forEach((value) => {
-      const td = document.createElement('td');
-      td.textContent = value;
-      tr.appendChild(td);
-    });
-    tbody.appendChild(tr);
+  // IRPF+IPAF combined, keeping the parent-child grouping (newest IRPF
+  // first, each IPAF directly under its parent) that the dashboard/
+  // submissions pages already use, minus any not-yet-submitted drafts.
+  const irpfIpafRecords = groupSubmissionsByParent().filter((r) => r.status !== 'draft');
+  reportRowsIrpfIpaf = irpfIpafRecords.map((record) => {
+    const row = buildIrpfIpafRow(record);
+    row.__isChild = record.formType === 'IPAF';
+    return row;
   });
+  renderRowsIntoTable('report-irpf-ipaf-body', reportRowsIrpfIpaf, 'No IRPF or IPAF projects have been submitted yet.');
+
+  // PCDF is standalone (no parent-child relationship), so it gets its own
+  // table, sorted newest first.
+  const pcdfRecords = sortByRefNumber(getSubmissionsByType('PCDF'), 'PCDF').filter((r) => r.status !== 'draft');
+  reportRowsPcdf = pcdfRecords.map(buildPcdfRow);
+  renderRowsIntoTable('report-pcdf-body', reportRowsPcdf, 'No PCDF projects have been submitted yet.');
 }
 
-/* Exports exactly what's in the "All Submissions" table as a real .xlsx
- * file via SheetJS (loaded from a CDN -- this app has no build step or
- * bundled dependencies, so generating a genuine Excel file client-side
- * needs the library available on the page). */
+/* Exports exactly what's in the two tables as a real .xlsx file, one sheet
+ * per table, via SheetJS (vendored locally -- this app has no build step
+ * or other runtime dependencies, and generating a genuine Excel file
+ * client-side needs the library available on the page). */
 function exportReportToExcel() {
   if (typeof XLSX === 'undefined') {
     alert('Could not export to Excel: the export library failed to load. Check your internet connection and try again.');
     return;
   }
-  const worksheet = XLSX.utils.json_to_sheet(reportRows);
+  const stripInternalFields = (rows) => rows.map(({ __isChild, ...row }) => row);
   const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, 'All Submissions');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(stripInternalFields(reportRowsIrpfIpaf)), 'IRPF & IPAF');
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(reportRowsPcdf), 'PCDF');
   const today = new Date().toISOString().slice(0, 10);
   XLSX.writeFile(workbook, `IRB-Report-${today}.xlsx`);
 }

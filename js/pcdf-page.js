@@ -35,11 +35,14 @@ function showBanner(message, type) {
   banner.hidden = false;
 }
 
-// The PI never sees the review process itself -- only the milestones that
-// are theirs to know about: their initial submission and the S/D Director's
-// approval (which is also the final outcome for a PCDF -- there's no
-// Secretariat or IRB Member review stage).
-const PCDF_PI_VISIBLE_ACTIONS = ['submit', 'director_approve'];
+// The PI never sees the review process itself -- only their own actions
+// (submit, acknowledge) plus one milestone triggered by someone else: the
+// S/D Director's approval (which is also the final outcome for a PCDF --
+// there's no Secretariat or IRB Member review stage). That other-triggered
+// milestone shows up in the log (see renderActivityLog below), but with its
+// note text hidden -- the PI gets the "what happened," not the internal
+// detail behind it.
+const PCDF_PI_VISIBLE_ACTIONS = ['submit', 'director_approve', 'acknowledged'];
 
 function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
@@ -70,7 +73,11 @@ function renderActivityLog(record, role) {
     meta.textContent = `${when} — ${getRoleLabel(entry.actor)} — ${entry.action.replace(/_/g, ' ')}`;
     li.appendChild(meta);
 
-    if (entry.note) {
+    // The PI sees the note text only for their own actions -- an entry
+    // someone else triggered (the Director's approval) shows just the
+    // milestone and when it happened, not the detail behind it.
+    const showNote = role !== 'pi' || entry.actor === 'pi';
+    if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';
       note.textContent = entry.note;

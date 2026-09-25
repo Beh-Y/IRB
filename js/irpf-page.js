@@ -699,6 +699,11 @@ function initIrpfPage() {
   });
 
   mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
+  // acknowledgePanel is deliberately excluded here: unlike the other
+  // contextual panels, its Acknowledge/View Guidelines buttons stay put
+  // next to the reminder text they belong to, right above the Comments
+  // panel, instead of relocating to the sticky top bar -- which then shows
+  // just Close on the acknowledgement page.
   [
     triagePanel,
     voteFormPanel,
@@ -706,7 +711,6 @@ function initIrpfPage() {
     leadershipApprovalPanel,
     collatePanel,
     ipafLinkPanel,
-    acknowledgePanel,
   ].forEach((panel) => {
     mirrorActionRow(panel, document.getElementById('top-actions'));
   });

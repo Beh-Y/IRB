@@ -599,7 +599,12 @@ function initIpafPage() {
   });
 
   mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
-  [triagePanel, voteFormPanel, underReviewActionPanel, leadershipApprovalPanel, collatePanel, acknowledgePanel].forEach((panel) => {
+  // acknowledgePanel is deliberately excluded here: unlike the other
+  // contextual panels, its Acknowledge button stays put next to the
+  // reminder text it belongs to, right above the Comments panel, instead
+  // of relocating to the sticky top bar -- which then shows just Close on
+  // the acknowledgement page.
+  [triagePanel, voteFormPanel, underReviewActionPanel, leadershipApprovalPanel, collatePanel].forEach((panel) => {
     mirrorActionRow(panel, document.getElementById('top-actions'));
   });
 }

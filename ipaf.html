@@ -20,6 +20,17 @@
 
     <div id="status-banner" class="status-banner" hidden></div>
 
+    <div id="acknowledge-panel" class="triage-panel" hidden>
+      <h2>Acknowledge Approval</h2>
+      <p class="triage-hint">
+        This IPAF has been approved. Please confirm your understanding of your responsibilities as a Principal
+        Investigator.
+      </p>
+      <div class="triage-actions">
+        <button id="btn-acknowledge" type="button" class="btn btn-primary">Acknowledge</button>
+      </div>
+    </div>
+
     <div id="comments-panel" class="activity-log" hidden>
       <h2 id="comments-panel-heading">Comments</h2>
       <ul id="comments-panel-list"></ul>
@@ -132,17 +143,6 @@
       <p class="triage-hint">Let the reviewers know how you've addressed their comments (see Activity above).</p>
       <label for="pi-comment">Comment (optional)</label>
       <textarea id="pi-comment" rows="3"></textarea>
-    </div>
-
-    <div id="acknowledge-panel" class="triage-panel" hidden>
-      <h2>Acknowledge Approval</h2>
-      <p class="triage-hint">
-        This IPAF has been approved. Please confirm your understanding of your responsibilities as a Principal
-        Investigator.
-      </p>
-      <div class="triage-actions">
-        <button id="btn-acknowledge" type="button" class="btn btn-primary">Acknowledge</button>
-      </div>
     </div>
 
     <div id="ipaf-form-container" class="form-container"></div>

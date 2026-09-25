@@ -168,8 +168,11 @@ function initPcdfPage() {
     window.location.href = 'index.html';
   });
 
+  // acknowledgePanel is deliberately not mirrored to the top bar, unlike
+  // every other page's contextual panels -- its Acknowledge button stays
+  // put next to the reminder text it belongs to, so the sticky top bar
+  // shows just Close on the acknowledgement page.
   mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
-  mirrorActionRow(acknowledgePanel, document.getElementById('top-actions'));
 }
 
 document.addEventListener('DOMContentLoaded', initPcdfPage);

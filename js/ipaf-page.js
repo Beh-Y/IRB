@@ -454,7 +454,7 @@ function initIpafPage() {
     }
     goToDashboardWithMessage(
       wasForRevision
-        ? `Resubmitted. Routed to ${getRoleLabel(record.routedTo)} for review.`
+        ? 'Resubmitted. The reviewers have been notified.'
         : `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'
     );
@@ -465,7 +465,7 @@ function initIpafPage() {
 
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();
-    goToDashboardWithMessage(`Approved and routed to ${getRoleLabel(record.routedTo)}.`, 'success');
+    goToDashboardWithMessage('Approved. Routed to the IRB Secretariat for triage.', 'success');
   });
 
   routeToMembersBtn.addEventListener('click', () => {

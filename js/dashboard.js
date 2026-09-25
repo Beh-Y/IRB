@@ -159,6 +159,28 @@ function renderDashboardPage() {
   renderPendingActionTable(getCurrentRole());
 }
 
+/* Appends a "Delete" action to a submissions-table row's Action cell --
+ * INDT / System Admin only, everyone else's row is untouched. Confirms
+ * first, then deletes and reloads the page (matches the page-reload
+ * pattern header.js already uses after a role switch, and sidesteps the
+ * need to re-render two independently-listener-wired tables in place). */
+function attachDeleteAction(actionCell, record, role) {
+  if (role !== 'system-admin') return;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-link btn-delete';
+  btn.textContent = 'Delete';
+  btn.addEventListener('click', () => {
+    const label = record.data.refNumber || `this ${record.formType} (draft, no reference yet)`;
+    const childWarning = record.formType === 'IRPF' ? ' along with its linked IPAF, if any,' : '';
+    if (!window.confirm(`Delete ${label}${childWarning}? This cannot be undone.`)) return;
+    deleteSubmission(record.id);
+    window.location.reload();
+  });
+  actionCell.appendChild(btn);
+}
+
 /* submissions.html: the Project Submissions (IRPF+IPAF merged) and PCDF
  * Submissions tables, plus the New IRPF/New PCDF creation buttons. */
 function renderSubmissionsPage() {
@@ -229,6 +251,7 @@ function renderSubmissionsPage() {
       badge.textContent = 'Action needed';
       actionCell.appendChild(badge);
     }
+    attachDeleteAction(actionCell, record, role);
 
     tr.appendChild(actionCell);
     tr.appendChild(refCell);
@@ -369,6 +392,7 @@ function renderPcdfDashboard(role) {
       badge.textContent = 'Action needed';
       actionCell.appendChild(badge);
     }
+    attachDeleteAction(actionCell, record, role);
 
     tr.appendChild(actionCell);
     tr.appendChild(refCell);

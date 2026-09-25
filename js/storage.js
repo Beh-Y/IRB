@@ -168,6 +168,25 @@ function getSubmissionsByType(formType) {
   return getAllSubmissions().filter((s) => s.formType === formType);
 }
 
+/* Permanently removes a submission (INDT / System Admin only -- gated in
+ * dashboard.js). Deleting an IRPF also removes any IPAF filed under it,
+ * since an orphaned IPAF pointing at a parent that no longer exists has
+ * nowhere sensible to be shown. */
+function deleteSubmission(id) {
+  const all = getAllSubmissions();
+  const target = all.find((s) => s.id === id);
+  if (!target) return;
+
+  const idsToRemove = new Set([id]);
+  if (target.formType === 'IRPF') {
+    all.forEach((s) => {
+      if (s.formType === 'IPAF' && s.parentIrpfId === id) idsToRemove.add(s.id);
+    });
+  }
+
+  writeJSON(STORAGE_KEYS.SUBMISSIONS, all.filter((s) => !idsToRemove.has(s.id)));
+}
+
 /* Upserts a submission record and appends a history entry describing the change. */
 function saveSubmission(record, historyEntry) {
   const all = getAllSubmissions();

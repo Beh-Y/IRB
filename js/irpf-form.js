@@ -868,13 +868,19 @@ class IrpfFormController {
   /* Secretariat can re-route to IRB Members from the under-review action
    * panel without discarding votes already cast -- unlike
    * routeToMembersForReview()'s fresh review at triage, this just updates
-   * who's assigned so a straggler or an added member can weigh in. */
+   * who's assigned so a straggler or an added member can weigh in. A member
+   * being (re-)assigned here always gets a clean slate, though: if they'd
+   * already voted (or deferred via Route to Secretariat) in an earlier
+   * round and are selected again, their stale vote would otherwise still
+   * count as "voted", permanently hiding this from their Pending My Action
+   * and blocking their vote panel from ever reopening for them. */
   routeToMembersFromUnderReview(comment, memberIds) {
     const assigned = memberIds || [];
     if (assigned.length === 0) {
       return { ok: false, error: 'Select at least one IRB Member to route this IRPF to.' };
     }
     this.record.assignedMembers = assigned;
+    this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
     this.record.status = 'under_review';
     const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
     saveSubmission(this.record, {
@@ -890,13 +896,17 @@ class IrpfFormController {
    * back to the IRB Member panel -- e.g. if Leadership's decision surfaces
    * a gap that needs fresh member input. Leadership approvals are
    * discarded, since they'd need to vote again once it gets back to them;
-   * existing member votes are kept, same as routeToMembersFromUnderReview(). */
+   * existing member votes are kept, same as routeToMembersFromUnderReview()
+   * -- including its same fix: a member being (re-)assigned here always
+   * gets a clean slate, so a stale vote from an earlier round can't keep
+   * hiding this from their Pending My Action. */
   routeToMembersFromCollate(comment, memberIds) {
     const assigned = memberIds || [];
     if (assigned.length === 0) {
       return { ok: false, error: 'Select at least one IRB Member to route this IRPF to.' };
     }
     this.record.assignedMembers = assigned;
+    this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
     this.record.leadershipApprovals = [];
     this.record.status = 'under_review';
     const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');

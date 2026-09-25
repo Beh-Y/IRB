@@ -500,7 +500,7 @@ function initIpafPage() {
       voteError.textContent = result.error;
       return;
     }
-    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
+    goToDashboardWithMessage('Action recorded. Thank you.', 'success');
   });
 
   voteRouteToSecretariatBtn.addEventListener('click', () => {
@@ -546,7 +546,7 @@ function initIpafPage() {
       leadershipError.textContent = result.error;
       return;
     }
-    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
+    goToDashboardWithMessage('Action recorded. Thank you.', 'success');
   });
 
   leadershipRouteToSecretariatBtn.addEventListener('click', () => {

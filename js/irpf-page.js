@@ -599,7 +599,7 @@ function initIrpfPage() {
       voteError.textContent = result.error;
       return;
     }
-    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
+    goToDashboardWithMessage('Action recorded. Thank you.', 'success');
   });
 
   voteRouteToSecretariatBtn.addEventListener('click', () => {
@@ -645,7 +645,7 @@ function initIrpfPage() {
       leadershipError.textContent = result.error;
       return;
     }
-    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
+    goToDashboardWithMessage('Action recorded. Thank you.', 'success');
   });
 
   leadershipRouteToSecretariatBtn.addEventListener('click', () => {

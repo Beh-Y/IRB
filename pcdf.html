@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PCDF – Publication Checklist Declaration Form</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div class="page-header">
+      <div>
+        <h1>Publication Checklist Declaration Form (PCDF)</h1>
+        <span id="pcdf-status-badge" class="status-badge"></span>
+      </div>
+    </div>
+
+    <div id="status-banner" class="status-banner" hidden></div>
+
+    <div id="acknowledge-panel" class="triage-panel" hidden>
+      <h2>Acknowledge Approval</h2>
+      <p class="triage-hint">
+        This PCDF has been approved. Please confirm your understanding of your responsibilities as a Principal
+        Investigator.
+      </p>
+      <div class="triage-actions">
+        <button id="btn-acknowledge" type="button" class="btn btn-primary">Acknowledge</button>
+      </div>
+    </div>
+
+    <div id="pcdf-form-container" class="form-container"></div>
+
+    <div class="form-actions">
+      <button id="btn-save" type="button" class="btn btn-secondary">Save</button>
+      <button id="btn-submit" type="button" class="btn btn-primary">Submit</button>
+      <button id="btn-approve" type="button" class="btn btn-primary">Approve</button>
+      <button id="btn-close" type="button" class="btn btn-secondary">Close</button>
+    </div>
+
+    <details id="activity-log" class="activity-log" hidden>
+      <summary>Activity Log</summary>
+      <ul id="activity-log-list"></ul>
+    </details>
+  </main>
+
+  <script src="js/error-guard.js"></script>
+  <script src="js/roles.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/refnumber.js"></script>
+  <script src="js/status.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/form-utils.js"></script>
+  <script src="js/pcdf-schema.js"></script>
+  <script src="js/pcdf-form.js"></script>
+  <script src="js/pcdf-page.js"></script>
+</body>
+</html>

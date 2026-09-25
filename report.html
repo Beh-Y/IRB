@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Report – SP IRB Process Management</title>
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <div id="app-header"></div>
+
+  <main class="page">
+    <div id="status-banner" class="status-banner" hidden></div>
+
+    <div class="page-header">
+      <h1>Report</h1>
+    </div>
+
+    <div id="report-content">
+      <p class="triage-hint">
+        An overall view of every project submitted by a PI, across IRPF, IPAF and PCDF. Drafts not yet submitted
+        aren't counted here.
+      </p>
+
+      <section class="form-section">
+        <h2>By Form Type</h2>
+        <div id="report-form-type-stats" class="voting-tally"></div>
+      </section>
+
+      <section class="form-section">
+        <h2>By Status</h2>
+        <div id="report-status-stats" class="voting-tally"></div>
+      </section>
+
+      <section class="form-section">
+        <h2>By Category of Research</h2>
+        <div id="report-category-stats" class="voting-tally"></div>
+      </section>
+
+      <div class="page-header page-header--spaced">
+        <h1>IRPF &amp; IPAF Submissions</h1>
+        <div class="report-export-actions">
+          <button id="btn-export-irpf-ipaf-excel" type="button" class="btn btn-secondary">Export to Excel</button>
+          <button id="btn-export-irpf-ipaf-pdf" type="button" class="btn btn-secondary">Export to PDF</button>
+        </div>
+      </div>
+
+      <div class="submissions-table-scroll">
+        <table class="submissions-table">
+          <thead>
+            <tr>
+              <th>Form</th>
+              <th>Reference No.</th>
+              <th>Principal Investigator</th>
+              <th>Project Title</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Last Updated</th>
+            </tr>
+          </thead>
+          <tbody id="report-irpf-ipaf-body"></tbody>
+        </table>
+      </div>
+
+      <div class="page-header page-header--spaced">
+        <h1>PCDF Submissions</h1>
+        <div class="report-export-actions">
+          <button id="btn-export-pcdf-excel" type="button" class="btn btn-secondary">Export to Excel</button>
+          <button id="btn-export-pcdf-pdf" type="button" class="btn btn-secondary">Export to PDF</button>
+        </div>
+      </div>
+
+      <table class="submissions-table">
+        <thead>
+          <tr>
+            <th>Reference No.</th>
+            <th>Principal Investigator</th>
+            <th>Project Title</th>
+            <th>Status</th>
+            <th>Last Updated</th>
+          </tr>
+        </thead>
+        <tbody id="report-pcdf-body"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="js/error-guard.js"></script>
+  <script src="js/roles.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/status.js"></script>
+  <script src="js/header.js"></script>
+  <script src="js/form-utils.js"></script>
+  <script src="js/dashboard.js"></script>
+  <script src="js/vendor/xlsx.mini.min.js"></script>
+  <script src="js/vendor/jspdf.umd.min.js"></script>
+  <script src="js/vendor/jspdf.plugin.autotable.min.js"></script>
+  <script src="js/report.js"></script>
+</body>
+</html>

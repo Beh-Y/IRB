@@ -241,6 +241,17 @@ class IpafFormController {
       this.record.status = 'for_revision';
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
+    } else if (this.record.routedTo === this.currentRole) {
+      /* This record had been routed straight back to just this member
+       * (after their own earlier Return bypassed the Secretariat, and the
+       * PI resubmitted to them specifically). Now that they've voted again
+       * -- Approve or Route to Secretariat -- that loop is closed, so hand
+       * it back to the Secretariat; otherwise the Secretariat's
+       * under-review action panel never reopens (it only shows for a
+       * record routedTo them). */
+      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+      this.record.routedTo = secretariat;
+      note += ` Routed back to ${getRoleLabel(secretariat)}.`;
     }
 
     saveSubmission(this.record, {
@@ -306,6 +317,13 @@ class IpafFormController {
       this.record.status = 'for_revision';
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
+    } else if (this.record.routedTo === this.currentRole) {
+      /* Same hand-back as castVote's: this leader's own earlier Return had
+       * pinned the record to them; now that they've voted again, hand it
+       * back to the Secretariat so the collate panel reopens. */
+      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+      this.record.routedTo = secretariat;
+      note += ` Routed back to ${getRoleLabel(secretariat)}.`;
     }
 
     saveSubmission(this.record, {

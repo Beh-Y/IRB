@@ -80,16 +80,16 @@ function renderActivityLog(record, role) {
   });
 }
 
-/* Top-of-page panel for staff reviewers (Secretariat, IRB Members, IRB
- * Leadership): every comment left so far -- from IRB Member votes and the
- * Secretariat's own past "Return for Amendments" notes (from triage or
- * collate) -- in one place, each with the specific reviewer's identity,
- * their decision, and when, newest first. Unlike the PI's blinded
- * "Reviewer Feedback" panel further down the page, this one fully
- * identifies who said what, so anyone reviewing has the whole picture
- * before acting. (IPAF has no leadership tier, but IRB Leadership can
- * still preview the page, so it's included here too for consistency with
- * the IRPF panel.) */
+/* Top-of-page panel showing every comment left so far -- from IRB Member
+ * votes, IRB Leadership votes, and the Secretariat's own past "Return for
+ * Amendments" notes (from triage, under-review-action, or collate) -- in
+ * one place, newest first. Staff reviewers (Secretariat, IRB Members, IRB
+ * Leadership) see it fully identified: who left each one and their
+ * decision. The PI sees the same combined comments here too, but
+ * blinded -- just the text, no identity, decision, or tally -- since
+ * review is meant to stay anonymous to the PI. This is now the PI's one
+ * feedback panel; the mid-page IRB Member Panel / IRB Leadership Approval
+ * panels stay hidden for the PI to avoid showing the same thing twice. */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
   const heading = document.getElementById('comments-panel-heading');
@@ -103,6 +103,9 @@ function renderCommentsPanel(controller) {
   }
 
   const memberEntries = controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp }));
+  const leadershipEntries = controller
+    .getLeadershipApprovals()
+    .map((a) => ({ identity: a.approverName, decision: a.decision, comment: a.comment, timestamp: a.timestamp }));
   const secretariatEntries = (controller.record.history || [])
     .filter((h) => h.action === 'returned_for_amendments')
     .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp }));
@@ -111,14 +114,14 @@ function renderCommentsPanel(controller) {
     heading.textContent = 'Reviewer Feedback';
     const hasComments = renderBlindedReviewComments(
       list,
-      [...memberEntries, ...secretariatEntries].map((e) => e.comment)
+      [...memberEntries, ...leadershipEntries, ...secretariatEntries].map((e) => e.comment)
     );
     container.hidden = !hasComments;
     return;
   }
 
   heading.textContent = 'Comments';
-  const hasComments = renderIdentifiedReviewComments(list, [...memberEntries, ...secretariatEntries]);
+  const hasComments = renderIdentifiedReviewComments(list, [...memberEntries, ...leadershipEntries, ...secretariatEntries]);
   container.hidden = !hasComments;
 }
 
@@ -181,13 +184,84 @@ function renderVotingSummary(controller) {
   });
 }
 
+function renderLeadershipSummary(controller) {
+  const container = document.getElementById('leadership-summary');
+  const heading = document.getElementById('leadership-summary-heading');
+  const list = document.getElementById('leadership-approvals-list');
+  const tallyEl = document.getElementById('leadership-tally');
+  list.innerHTML = '';
+  tallyEl.innerHTML = '';
+
+  if (controller.currentRole === 'pi') {
+    // Leadership's feedback (and everything else relevant) is already
+    // folded into the top-of-page Comments panel (renderCommentsPanel),
+    // so this separate panel just stays out of the PI's way entirely
+    // rather than showing a redundant/empty duplicate.
+    container.hidden = true;
+    return;
+  }
+
+  const record = controller.record;
+  const everReached = record.status === 'pending_leadership_approval' || controller.getLeadershipApprovals().length > 0;
+  if (!everReached) {
+    container.hidden = true;
+    return;
+  }
+
+  container.hidden = false;
+  heading.textContent = 'IRB Leadership Approval';
+
+  const approvals = controller.getLeadershipApprovals();
+  const tally = controller.leadershipTally();
+  const chips = [
+    { text: `${tally.total} of ${tally.leadershipTotal} reviewed`, cls: '' },
+    { text: `${tally.approveCount} Approve`, cls: 'tally-chip--approve' },
+    { text: `${tally.returnCount} Return`, cls: 'tally-chip--return' },
+  ];
+  chips.forEach((c) => {
+    const chip = document.createElement('span');
+    chip.className = `tally-chip ${c.cls}`;
+    chip.textContent = c.text;
+    tallyEl.appendChild(chip);
+  });
+
+  IRB_LEADERSHIP_IDS.forEach((id) => {
+    const approval = approvals.find((a) => a.approverId === id);
+    const li = document.createElement('li');
+    const meta = document.createElement('div');
+    meta.className = 'activity-meta';
+    if (approval) {
+      meta.textContent = `${new Date(approval.timestamp).toLocaleString()} — ${approval.approverName} — ${approval.decision}`;
+    } else {
+      meta.textContent = `${getRoleLabel(id)} — Pending`;
+    }
+    li.appendChild(meta);
+    if (approval && approval.comment) {
+      const note = document.createElement('div');
+      note.className = 'activity-note';
+      note.textContent = approval.comment;
+      li.appendChild(note);
+    }
+    list.appendChild(li);
+  });
+}
+
 function renderCollateHint(controller) {
   const hint = document.getElementById('collate-hint');
+  const tally = controller.leadershipTally();
+  hint.textContent =
+    `${tally.total} of ${tally.leadershipTotal} IRB leader(s) have reviewed this IPAF so far: ` +
+    `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
+    'Choose to approve it or return it for amendments now, or wait for the rest if you prefer.';
+}
+
+function renderUnderReviewActionHint(controller) {
+  const hint = document.getElementById('under-review-action-hint');
   const tally = controller.voteTally();
   hint.textContent =
     `${tally.total} of ${tally.assignedTotal} assigned member(s) have reviewed this IPAF so far: ` +
     `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
-    'You can approve it or return it for amendments now, or wait for the rest.';
+    'You can route it on to the Co-Chairman and Chairman, or return it for amendments now — or wait for the rest.';
 }
 
 function initIpafPage() {
@@ -211,7 +285,9 @@ function initIpafPage() {
   renderActivityLog(record, role);
   renderCommentsPanel(controller);
   renderVotingSummary(controller);
+  renderLeadershipSummary(controller);
   renderMemberCheckboxes('triage-member-checkboxes', record.assignedMembers);
+  renderMemberCheckboxes('under-review-member-checkboxes', record.assignedMembers);
   renderMemberCheckboxes('collate-member-checkboxes', record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
@@ -222,6 +298,7 @@ function initIpafPage() {
   const triageComment = document.getElementById('triage-comment');
   const triageError = document.getElementById('triage-error');
   const routeToMembersBtn = document.getElementById('btn-route-to-members');
+  const triageRouteToLeadershipBtn = document.getElementById('btn-triage-route-to-leadership');
   const triageReturnAmendmentsBtn = document.getElementById('btn-triage-return-amendments');
   const voteFormPanel = document.getElementById('vote-form-panel');
   const voterIdentityEl = document.getElementById('voter-identity');
@@ -238,6 +315,17 @@ function initIpafPage() {
   const piCommentInput = document.getElementById('pi-comment');
   const acknowledgePanel = document.getElementById('acknowledge-panel');
   const acknowledgeBtn = document.getElementById('btn-acknowledge');
+  const underReviewActionPanel = document.getElementById('under-review-action-panel');
+  const underReviewActionCommentInput = document.getElementById('under-review-action-comment');
+  const underReviewActionError = document.getElementById('under-review-action-error');
+  const underReviewRouteToMembersBtn = document.getElementById('btn-under-review-route-to-members');
+  const routeToLeadershipBtn = document.getElementById('btn-route-to-leadership');
+  const returnAmendmentsEarlyBtn = document.getElementById('btn-return-amendments-early');
+  const leadershipApprovalPanel = document.getElementById('leadership-approval-panel');
+  const leadershipIdentityEl = document.getElementById('leadership-identity');
+  const leadershipCommentInput = document.getElementById('leadership-comment');
+  const leadershipError = document.getElementById('leadership-error');
+  const leadershipVoteBtn = document.getElementById('btn-leadership-vote');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
@@ -247,6 +335,8 @@ function initIpafPage() {
   collatePanel.hidden = true;
   piCommentPanel.hidden = true;
   acknowledgePanel.hidden = true;
+  underReviewActionPanel.hidden = true;
+  leadershipApprovalPanel.hidden = true;
 
   if (controller.isEditableByPi()) {
     saveBtn.hidden = false;
@@ -263,9 +353,12 @@ function initIpafPage() {
     );
   } else if (controller.isPendingSecretariatTriage()) {
     triagePanel.hidden = false;
-  } else if (controller.isPendingSecretariatUnderReviewAction()) {
+  } else if (controller.isPendingSecretariatCollation()) {
     collatePanel.hidden = false;
     renderCollateHint(controller);
+  } else if (controller.isPendingSecretariatUnderReviewAction()) {
+    underReviewActionPanel.hidden = false;
+    renderUnderReviewActionHint(controller);
   } else if (controller.isAwaitingMemberReview()) {
     const pending = controller
       .getAssignedMembers()
@@ -279,6 +372,18 @@ function initIpafPage() {
     showBanner('Review the IPAF below, then cast your vote.', 'info');
   } else if (controller.isUnassignedMemberViewingUnderReview()) {
     showBanner('This IPAF is under review but was not routed to you.', 'muted');
+  } else if (controller.isPendingLeadershipApproval()) {
+    leadershipApprovalPanel.hidden = false;
+    leadershipIdentityEl.textContent = getRoleLabel(role);
+    showBanner('Review the IPAF below, then cast your vote.', 'info');
+  } else if (controller.isLeadershipWaitingOnOther()) {
+    const otherName = getRoleLabel(IRB_LEADERSHIP_IDS.find((id) => id !== role));
+    showBanner(`You've voted. Waiting on ${otherName}.`, 'info');
+  } else if (controller.isAwaitingLeadershipApproval()) {
+    const pending = IRB_LEADERSHIP_IDS.filter((id) => !controller.hasLeadershipVoted(id))
+      .map((id) => getRoleLabel(id))
+      .join(', ');
+    showBanner(`Waiting on review from: ${pending}.`, 'info');
   } else if (controller.isPendingAcknowledgement()) {
     acknowledgePanel.hidden = false;
     showBanner('This IPAF is approved. Please acknowledge your responsibilities as PI below.', 'success');
@@ -290,6 +395,8 @@ function initIpafPage() {
     showBanner('Returned for amendments. Awaiting the PI to address the comments and resubmit.', 'info');
   } else if (record.status === 'under_review') {
     showBanner('Routed to the IRB Member panel for review. Awaiting their feedback.', 'info');
+  } else if (record.status === 'pending_leadership_approval') {
+    showBanner('Routed to the IRB Co-Chairman and Chairman for approval. Awaiting their decision.', 'info');
   } else if (record.status === 'approved') {
     showBanner(
       record.acknowledged ? 'This IPAF is approved and has been acknowledged by the PI.' : 'This IPAF is approved.',
@@ -336,6 +443,11 @@ function initIpafPage() {
     goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
   });
 
+  triageRouteToLeadershipBtn.addEventListener('click', () => {
+    controller.routeToLeadershipApproval(triageComment.value);
+    goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+  });
+
   triageReturnAmendmentsBtn.addEventListener('click', () => {
     const result = controller.returnForAmendments(triageComment.value);
     if (!result.ok) {
@@ -350,6 +462,43 @@ function initIpafPage() {
     const result = controller.castVote(decisionEl ? decisionEl.value : null, voteCommentInput.value);
     if (!result.ok) {
       voteError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
+  });
+
+  underReviewRouteToMembersBtn.addEventListener('click', () => {
+    const result = controller.routeToMembersFromUnderReview(
+      underReviewActionCommentInput.value,
+      getCheckedMemberIds('under-review-member-checkboxes')
+    );
+    if (!result.ok) {
+      underReviewActionError.textContent = result.error;
+      return;
+    }
+    const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
+    goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
+  });
+
+  routeToLeadershipBtn.addEventListener('click', () => {
+    controller.routeToLeadershipApproval(underReviewActionCommentInput.value);
+    goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+  });
+
+  returnAmendmentsEarlyBtn.addEventListener('click', () => {
+    const result = controller.returnForAmendments(underReviewActionCommentInput.value);
+    if (!result.ok) {
+      underReviewActionError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
+  });
+
+  leadershipVoteBtn.addEventListener('click', () => {
+    const decisionEl = leadershipApprovalPanel.querySelector('input[name="leadershipDecision"]:checked');
+    const result = controller.castLeadershipVote(decisionEl ? decisionEl.value : null, leadershipCommentInput.value);
+    if (!result.ok) {
+      leadershipError.textContent = result.error;
       return;
     }
     goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
@@ -375,7 +524,7 @@ function initIpafPage() {
   }
 
   collateRouteToMembersBtn.addEventListener('click', () =>
-    handleCollateDecision((c) => controller.routeToMembersFromUnderReview(c, getCheckedMemberIds('collate-member-checkboxes')))
+    handleCollateDecision((c) => controller.routeToMembersFromCollate(c, getCheckedMemberIds('collate-member-checkboxes')))
   );
   approveIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.approveIpaf(c)));
   returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
@@ -390,7 +539,7 @@ function initIpafPage() {
   });
 
   mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
-  [triagePanel, voteFormPanel, collatePanel, acknowledgePanel].forEach((panel) => {
+  [triagePanel, voteFormPanel, underReviewActionPanel, leadershipApprovalPanel, collatePanel, acknowledgePanel].forEach((panel) => {
     mirrorActionRow(panel, document.getElementById('bottom-panel-actions'));
   });
 }

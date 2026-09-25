@@ -52,6 +52,7 @@ function createChildIpaf(irpfRecord, actorRole) {
     history: [],
     votes: [],
     assignedMembers: [],
+    leadershipApprovals: [],
     createdAt: new Date().toISOString(),
     updatedAt: null,
     routedTo: null,

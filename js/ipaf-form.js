@@ -1,13 +1,14 @@
 /*
  * IPAF (IRB Protocol Application Form) document generation script.
  * Renders the IPAF section-by-section from IPAF_SCHEMA and drives its
- * Draft -> S/D Director Approval -> For Review -> Under Review -> (For
- * Revision loop) -> Approved workflow, the same shape as the IRPF's.
- * Unlike the IRPF, there's no Co-Chairman/Chairman leadership tier -- IRB
- * Member review is the only review stage, per the IPAF spec. The
- * Secretariat/member review logic (act on partial votes, keep re-deciding,
- * stragglers can still vote even after the record moves on or gets routed
- * back) mirrors the IRPF's.
+ * Draft -> S/D Director Approval -> For Review -> Under Review -> IRB
+ * Leadership Approval -> (For Revision loop) -> Approved workflow, the same
+ * shape as the IRPF's minus the "To Create IPAF" outcome (there's no
+ * follow-on form for an IPAF to spawn). The Secretariat/member/leadership
+ * review logic (act on partial votes, keep re-deciding, stragglers can
+ * still vote even after the record moves on or gets routed back, an
+ * individual reviewer's own Return bypasses the Secretariat) mirrors the
+ * IRPF's throughout.
  */
 
 class IpafFormController {
@@ -74,18 +75,42 @@ class IpafFormController {
     };
   }
 
+  getLeadershipApprovals() {
+    return this.record.leadershipApprovals || [];
+  }
+
+  hasLeadershipVoted(roleId) {
+    return this.getLeadershipApprovals().some((a) => a.approverId === roleId);
+  }
+
+  allLeadersVoted() {
+    return IRB_LEADERSHIP_IDS.every((id) => this.hasLeadershipVoted(id));
+  }
+
+  leadershipTally() {
+    const approvals = this.getLeadershipApprovals();
+    return {
+      total: approvals.length,
+      leadershipTotal: IRB_LEADERSHIP_IDS.length,
+      approveCount: approvals.filter((a) => a.decision === 'Approve').length,
+      returnCount: approvals.filter((a) => a.decision === 'Return').length,
+    };
+  }
+
   /* A member can cast their vote as soon as they're assigned, whether or not
    * the Secretariat has already acted on other members' votes and moved the
    * record on -- their review still gets recorded either way. This holds
-   * even once the PI has resubmitted and it's routed back to the
-   * Secretariat (pending_review): a straggler's vote still counts right up
-   * until the Secretariat re-triages and starts a fresh review cycle. */
+   * even once it's been routed to Leadership or the PI has resubmitted and
+   * it's routed back to the Secretariat (pending_review): a straggler's
+   * vote still counts right up until the Secretariat re-triages and starts
+   * a fresh review cycle. */
   isUnderReviewVotingOpenToMember() {
     return (
       this.isAssignedMember() &&
       !this.hasVoted(this.currentRole) &&
       (this.record.status === 'under_review' ||
-        (['for_revision', 'approved', 'pending_review'].includes(this.record.status) && this.getVotes().length > 0))
+        (['for_revision', 'pending_leadership_approval', 'approved', 'pending_review'].includes(this.record.status) &&
+          this.getVotes().length > 0))
     );
   }
 
@@ -95,14 +120,61 @@ class IpafFormController {
 
   /* Secretariat can act on the member panel as soon as any member has voted
    * -- it doesn't wait for the rest -- and can keep acting on it (e.g.
-   * reconsider after a late vote) right up until it's approved (terminal)
+   * reconsider after a late vote) right up until it's routed to leadership
    * or the PI resubmits. */
   isPendingSecretariatUnderReviewAction() {
     return (
       isSecretariat(this.currentRole) &&
       this.record.routedTo === this.currentRole &&
       this.getVotes().length > 0 &&
+      this.getLeadershipApprovals().length === 0 &&
       ['under_review', 'for_revision'].includes(this.record.status)
+    );
+  }
+
+  /* Same idea for leadership: a leader can still cast their vote even after
+   * the Secretariat has already recorded a final outcome based on the other
+   * leader's vote, and even after the PI has resubmitted and it's routed
+   * back to the Secretariat (pending_review). */
+  isPendingLeadershipApproval() {
+    return (
+      isIrbLeadership(this.currentRole) &&
+      !this.hasLeadershipVoted(this.currentRole) &&
+      (this.record.status === 'pending_leadership_approval' ||
+        (['approved', 'for_revision', 'pending_review'].includes(this.record.status) &&
+          this.getLeadershipApprovals().length > 0))
+    );
+  }
+
+  isLeadershipWaitingOnOther() {
+    return (
+      isIrbLeadership(this.currentRole) &&
+      this.record.status === 'pending_leadership_approval' &&
+      this.hasLeadershipVoted(this.currentRole) &&
+      !this.allLeadersVoted()
+    );
+  }
+
+  /* Secretariat can record the final outcome as soon as any leader has voted
+   * -- it doesn't wait for both -- and can keep re-deciding while the record
+   * is still in flux (a late vote comes in after an early "Returned for
+   * Amendments"). But once they Approve, the record has reached a true
+   * terminal state and the task is closed: this panel doesn't reopen. */
+  isPendingSecretariatCollation() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.routedTo === this.currentRole &&
+      this.getLeadershipApprovals().length > 0 &&
+      ['pending_leadership_approval', 'for_revision'].includes(this.record.status)
+    );
+  }
+
+  isAwaitingLeadershipApproval() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'pending_leadership_approval' &&
+      this.record.routedTo === this.currentRole &&
+      this.getLeadershipApprovals().length === 0
     );
   }
 
@@ -164,6 +236,63 @@ class IpafFormController {
     return { ok: true };
   }
 
+  /* Secretariat escalates a unanimously-approved IPAF to the Co-Chairman and Chairman. */
+  routeToLeadershipApproval(comment) {
+    this.record.status = 'pending_leadership_approval';
+    this.record.leadershipApprovals = [];
+    saveSubmission(this.record, {
+      action: 'routed_to_leadership',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment || 'Routed to the IRB Co-Chairman and Chairman for approval.',
+    });
+    return { ok: true };
+  }
+
+  castLeadershipVote(decision, comment) {
+    if (!isIrbLeadership(this.currentRole)) {
+      return { ok: false, error: 'This IPAF was not routed to you for review.' };
+    }
+    if (!decision) {
+      return { ok: false, error: 'Select Approve or Return.' };
+    }
+    if (decision === 'Return' && !(comment || '').trim()) {
+      return { ok: false, error: 'A comment is required when returning for amendments.' };
+    }
+    if (this.hasLeadershipVoted(this.currentRole)) {
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IPAF.` };
+    }
+
+    this.record.leadershipApprovals = this.getLeadershipApprovals();
+    const approval = {
+      approverId: this.currentRole,
+      approverName: getRoleLabel(this.currentRole),
+      decision,
+      comment: (comment || '').trim(),
+      timestamp: new Date().toISOString(),
+    };
+    this.record.leadershipApprovals.push(approval);
+
+    let note = `${approval.approverName}: ${decision}${approval.comment ? ' — ' + approval.comment : ''}`;
+
+    /* Same bypass as a member's return (see castVote): sends the IPAF
+     * straight back to the PI instead of waiting on the Secretariat's
+     * collation step. Resubmission routes it back to this same leader. */
+    if (decision === 'Return') {
+      this.record.status = 'for_revision';
+      this.record.routedTo = this.currentRole;
+      note += ' Routed directly to the PI for amendments.';
+    }
+
+    saveSubmission(this.record, {
+      action: 'leadership_vote',
+      actor: this.currentRole,
+      status: this.record.status,
+      note,
+    });
+    return { ok: true };
+  }
+
   /* Secretariat's first (and only) action at For Review: send to the IRB Member panel. */
   routeToMembersForReview(comment, memberIds) {
     const assigned = memberIds || [];
@@ -183,13 +312,10 @@ class IpafFormController {
     return { ok: true };
   }
 
-  /* Secretariat can re-route to IRB Members from the collate panel (this is
-   * the same "act once a vote is in" stage as the IRPF's under-review
-   * action panel, just combined here with the final decision since IPAF
-   * has no leadership tier to route to instead) without discarding votes
-   * already cast -- unlike routeToMembersForReview()'s fresh review at
-   * triage, this just updates who's assigned so a straggler or an added
-   * member can weigh in. */
+  /* Secretariat can re-route to IRB Members from the under-review action
+   * panel without discarding votes already cast -- unlike
+   * routeToMembersForReview()'s fresh review at triage, this just updates
+   * who's assigned so a straggler or an added member can weigh in. */
   routeToMembersFromUnderReview(comment, memberIds) {
     const assigned = memberIds || [];
     if (assigned.length === 0) {
@@ -203,6 +329,31 @@ class IpafFormController {
       actor: this.currentRole,
       status: this.record.status,
       note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for review: ${memberLabels}.`,
+    });
+    return { ok: true };
+  }
+
+  /* Secretariat can send a collated IPAF (Leadership has already voted) back
+   * to the IRB Member panel -- e.g. if Leadership's decision surfaces a gap
+   * that needs fresh member input. Leadership approvals are discarded,
+   * since they'd need to vote again once it gets back to them; existing
+   * member votes are kept, same as routeToMembersFromUnderReview(). */
+  routeToMembersFromCollate(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
+    }
+    this.record.assignedMembers = assigned;
+    this.record.leadershipApprovals = [];
+    this.record.status = 'under_review';
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
+    saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment
+        ? `${comment} Routed to: ${memberLabels}. Leadership approvals cleared.`
+        : `Routed to the IRB Member panel for review: ${memberLabels}. Leadership approvals cleared.`,
     });
     return { ok: true };
   }
@@ -718,17 +869,28 @@ class IpafFormController {
 
     if (wasForRevision) {
       // Resubmission after a Return skips the Director gate either way.
-      // If a specific IRB member bypassed the Secretariat to return it
-      // directly (see castVote), it goes straight back to that same
-      // member -- reopening just their vote -- instead of back through
-      // Secretariat triage.
+      // If a specific IRB member or leader bypassed the Secretariat to
+      // return it directly (see castVote/castLeadershipVote), it goes
+      // straight back to that same person -- reopening just their vote --
+      // instead of back through Secretariat triage.
       const returningReviewer = this.record.routedTo;
       const returnedByMember = isIrbMember(returningReviewer);
+      const returnedByLeader = isIrbLeadership(returningReviewer);
 
       if (returnedByMember) {
         this.record.votes = this.getVotes().filter((v) => v.voterId !== returningReviewer);
         this.record.status = 'under_review';
         const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for review.`;
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+        });
+      } else if (returnedByLeader) {
+        this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.approverId !== returningReviewer);
+        this.record.status = 'pending_leadership_approval';
+        const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for approval.`;
         saveSubmission(this.record, {
           action: 'resubmit',
           actor: this.currentRole,

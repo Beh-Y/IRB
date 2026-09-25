@@ -28,8 +28,8 @@
     <div id="triage-panel" class="triage-panel" hidden>
       <h2>Secretariat Review</h2>
       <p class="triage-hint">
-        Route this IPAF to the IRB Member panel for review. Once they send their review back, you'll be able to
-        record the final outcome.
+        Route this IPAF to the IRB Member panel for review, or route it straight to the Co-Chairman and Chairman for
+        approval if a full member review isn't needed.
       </p>
       <label for="triage-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
       <textarea id="triage-comment" rows="3"></textarea>
@@ -40,6 +40,9 @@
       <div id="triage-error" class="field-error"></div>
       <div class="triage-actions">
         <button id="btn-route-to-members" type="button" class="btn btn-primary">Route to IRB Members for Review</button>
+        <button id="btn-triage-route-to-leadership" type="button" class="btn btn-secondary">
+          Route to Co-Chairman &amp; Chairman for Approval
+        </button>
         <button id="btn-triage-return-amendments" type="button" class="btn btn-secondary">Return for Amendments</button>
       </div>
     </div>
@@ -65,13 +68,53 @@
       </div>
     </div>
 
+    <div id="under-review-action-panel" class="triage-panel" hidden>
+      <h2>Secretariat Review</h2>
+      <p id="under-review-action-hint" class="triage-hint"></p>
+      <label for="under-review-action-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
+      <textarea id="under-review-action-comment" rows="3"></textarea>
+
+      <label>Route to IRB Members <span class="triage-hint-inline">(existing votes are kept)</span></label>
+      <div id="under-review-member-checkboxes" class="checkbox-group"></div>
+
+      <div id="under-review-action-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-under-review-route-to-members" type="button" class="btn btn-secondary">Route to IRB Members</button>
+        <button id="btn-route-to-leadership" type="button" class="btn btn-primary">
+          Route to Co-Chairman &amp; Chairman for Approval
+        </button>
+        <button id="btn-return-amendments-early" type="button" class="btn btn-secondary">Return for Amendments</button>
+      </div>
+    </div>
+
+    <div id="leadership-summary" class="activity-log" hidden>
+      <h2 id="leadership-summary-heading">IRB Leadership Approval</h2>
+      <div id="leadership-tally" class="voting-tally"></div>
+      <ul id="leadership-approvals-list"></ul>
+    </div>
+
+    <div id="leadership-approval-panel" class="triage-panel" hidden>
+      <h2>Cast Your Vote</h2>
+      <p class="triage-hint">Voting as <strong id="leadership-identity"></strong></p>
+      <div class="radio-group vote-decision-group">
+        <label class="radio-option"><input type="radio" name="leadershipDecision" value="Approve" /> Approve</label>
+        <label class="radio-option"><input type="radio" name="leadershipDecision" value="Return" /> Return for Amendments</label>
+      </div>
+      <label for="leadership-comment">Comment</label>
+      <textarea id="leadership-comment" rows="3"></textarea>
+      <div id="leadership-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-leadership-vote" type="button" class="btn btn-primary">Submit Vote</button>
+      </div>
+    </div>
+
     <div id="collate-panel" class="triage-panel" hidden>
       <h2>Secretariat Decision</h2>
       <p id="collate-hint" class="triage-hint"></p>
       <label for="collate-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
       <textarea id="collate-comment" rows="3"></textarea>
 
-      <label>Route to IRB Members <span class="triage-hint-inline">(existing votes are kept)</span></label>
+      <label>Route to IRB Members <span class="triage-hint-inline">(clears Leadership approvals)</span></label>
       <div id="collate-member-checkboxes" class="checkbox-group"></div>
 
       <div id="collate-error" class="field-error"></div>

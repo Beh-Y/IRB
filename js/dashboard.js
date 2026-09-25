@@ -322,7 +322,15 @@ function renderPendingActionTable(role) {
     endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
 
     const statusCell = document.createElement('td');
-    statusCell.textContent = getStatusLabel(record.status, record.formType);
+    // On the S/D Director's own to-do list, a record pending their approval
+    // is never still a "draft" from their point of view -- it's already
+    // been submitted to them -- so this one status reads as just "Pending
+    // Approval" here, even though the fuller "Draft – Pending Director
+    // Approval" label is kept everywhere else (Submissions, Report, etc.).
+    statusCell.textContent =
+      role === 'sd-director' && record.status === 'pending_director_approval'
+        ? 'Pending Approval'
+        : getStatusLabel(record.status, record.formType);
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';

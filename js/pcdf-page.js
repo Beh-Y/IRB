@@ -164,7 +164,7 @@ function initPcdfPage() {
   });
 
   mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
-  mirrorActionRow(acknowledgePanel, document.getElementById('bottom-panel-actions'));
+  mirrorActionRow(acknowledgePanel, document.getElementById('top-actions'));
 }
 
 document.addEventListener('DOMContentLoaded', initPcdfPage);

@@ -702,7 +702,7 @@ function initIrpfPage() {
     ipafLinkPanel,
     acknowledgePanel,
   ].forEach((panel) => {
-    mirrorActionRow(panel, document.getElementById('bottom-panel-actions'));
+    mirrorActionRow(panel, document.getElementById('top-actions'));
   });
 }
 

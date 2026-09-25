@@ -697,32 +697,54 @@ body {
 /* Lives inside #app-header, which is full-width (outside <main class="page">),
  * so without this it wouldn't line up with the page's own 900px/1.5rem
  * max-width+padding -- match those exactly so the top bar sits flush with
- * the form content beneath it instead of the browser edge. */
+ * the form content beneath it instead of the browser edge. It's the flex
+ * row itself (see mirrorActionRow in form-utils.js, which appends cloned
+ * buttons here directly rather than wrapping each source row in its own
+ * div), so the always-visible Close button and whichever contextual
+ * panel's actions are currently active read as one row, not stacked ones. */
 .top-actions {
   max-width: 900px;
-  margin: 0 auto 1.25rem;
-  padding: 0.75rem 1.5rem 0;
-}
-
-.top-actions .form-actions,
-.top-actions .triage-actions {
-  margin-top: 0;
+  margin: 0 auto;
+  padding: 0.75rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
 }
 
 .top-actions:empty {
   display: none;
 }
 
-#bottom-panel-actions {
-  margin-top: 1.5rem;
-}
-
-#bottom-panel-actions .triage-actions {
-  margin: 0 0 0.75rem;
-}
-
-#bottom-panel-actions:empty {
+/* The one and only place any action button shows -- see mirrorActionRow in
+ * form-utils.js, which clones every `.form-actions`/`.triage-actions` row
+ * into the sticky bar above (`.top-actions`) and marks the original with
+ * this class so it never also renders in its natural, scrolled-past
+ * position further down the form. */
+.action-row-relocated {
   display: none;
+}
+
+/* Keeps the nav and the current action row reachable no matter how far
+ * down a long form the user has scrolled -- #app-header wraps both
+ * .header-bar (nav) and .top-actions (the action row), so pinning it pins
+ * them together. An opaque background is required since sticky content
+ * scrolls underneath it. */
+#app-header {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--color-surface);
+}
+
+/* Pushes just this one button (e.g. "Submit to Secretariat"/"Route to
+ * Secretariat") to the right edge of its action row, away from the rest --
+ * `order` moves it after every default (order: 0) sibling regardless of
+ * its position in the HTML, and the auto margin then claims all the
+ * leftover space in front of it. */
+.btn-align-right {
+  order: 2;
+  margin-left: auto;
 }
 
 @media (max-width: 640px) {

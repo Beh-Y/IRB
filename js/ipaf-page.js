@@ -594,7 +594,7 @@ function initIpafPage() {
 
   mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
   [triagePanel, voteFormPanel, underReviewActionPanel, leadershipApprovalPanel, collatePanel, acknowledgePanel].forEach((panel) => {
-    mirrorActionRow(panel, document.getElementById('bottom-panel-actions'));
+    mirrorActionRow(panel, document.getElementById('top-actions'));
   });
 }
 

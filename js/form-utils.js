@@ -152,14 +152,21 @@ function renderIdentifiedReviewComments(list, entries) {
   return withComments.length > 0;
 }
 
-/* Clones an action-button row (e.g. the bottom `.form-actions` bar, or a
- * contextual panel's `.triage-actions` row) into `targetContainer` so the
- * same actions are reachable from both the top and bottom of the form.
- * `visibilityEl` is the element whose `hidden` state the panel/bar was set
- * from (often the row itself, sometimes its enclosing panel) -- read once,
- * at call time, since nothing re-hides these mid-page anymore now that
- * every action redirects away on success. Each clone forwards its click to
- * the real button so there's exactly one implementation per action. */
+/* Clones the buttons/links from an action row (e.g. the `.form-actions`
+ * bar, or a contextual panel's `.triage-actions` row) directly into
+ * `targetContainer` -- the single sticky top-actions bar in the header --
+ * and hides the original row in place, so each action is reachable
+ * exactly once, from the top, however far down the form the panel it
+ * belongs to sits. Clones from every call land as siblings in that same
+ * bar (not one wrapper row per call) so e.g. the always-visible Close
+ * button and the current contextual panel's own actions (Submit Vote /
+ * Route to Secretariat, ...) read as one row instead of stacking into
+ * separate lines. `visibilityEl` is the element whose `hidden` state the
+ * panel/bar was set from (often the row itself, sometimes its enclosing
+ * panel) -- read once, at call time, since nothing re-hides these mid-page
+ * anymore now that every action redirects away on success. Each clone
+ * forwards its click to the real button so there's exactly one
+ * implementation per action. */
 function mirrorActionRow(visibilityEl, targetContainer) {
   if (!visibilityEl || !targetContainer) return;
   const sourceRow = visibilityEl.matches && visibilityEl.matches('.triage-actions, .form-actions')
@@ -167,24 +174,21 @@ function mirrorActionRow(visibilityEl, targetContainer) {
     : visibilityEl.querySelector('.triage-actions, .form-actions');
   if (!sourceRow) return;
 
-  const mirror = document.createElement('div');
-  mirror.className = sourceRow.className;
-  mirror.hidden = !!visibilityEl.hidden;
+  const rowHidden = !!visibilityEl.hidden;
 
   Array.from(sourceRow.children).forEach((child) => {
     const clone = child.cloneNode(true);
     if (clone.id) clone.removeAttribute('id');
     if (child.tagName === 'BUTTON' || child.tagName === 'A') {
-      clone.hidden = child.hidden;
+      clone.hidden = rowHidden || child.hidden;
       clone.disabled = child.disabled;
       clone.addEventListener('click', (e) => {
         e.preventDefault();
-        if (!child.hidden && !child.disabled) child.click();
+        if (!rowHidden && !child.hidden && !child.disabled) child.click();
       });
     }
-    mirror.appendChild(clone);
+    targetContainer.appendChild(clone);
   });
 
-  targetContainer.appendChild(mirror);
-  return mirror;
+  sourceRow.classList.add('action-row-relocated');
 }

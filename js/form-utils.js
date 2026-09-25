@@ -109,16 +109,18 @@ function renderBlindedReviewComments(list, comments) {
 
 /* Renders a fully-identified list of review comments -- who left it, their
  * decision (if any), and when -- for staff roles who need the full
- * picture (currently: the Secretariat's top-of-page Comments panel),
- * unlike the PI's blinded feedback panel. Takes an array of {identity,
- * decision, comment, timestamp}; entries with no comment are skipped, and
- * the rest are shown newest first. Returns true if anything was
- * rendered, so the caller can hide the panel when there's nothing yet. */
+ * picture (currently: the Secretariat/Member/Leadership top-of-page
+ * Comments panel), unlike the PI's blinded feedback panel. Takes an array
+ * of {identity, decision, comment, timestamp}; entries with no comment are
+ * skipped, and the rest are shown oldest first -- this is a conversation
+ * thread (reviewer comment, PI's response, reviewer comment, ...), so it
+ * reads top-to-bottom in the order it happened. Returns true if anything
+ * was rendered, so the caller can hide the panel when there's nothing yet. */
 function renderIdentifiedReviewComments(list, entries) {
   list.innerHTML = '';
   const withComments = entries
     .filter((e) => e.comment && e.comment.trim())
-    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
   withComments.forEach((entry) => {
     const li = document.createElement('li');
     const meta = document.createElement('div');

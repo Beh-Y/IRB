@@ -259,6 +259,8 @@ class IpafFormController {
       actor: this.currentRole,
       status: this.record.status,
       note,
+      decision,
+      comment: vote.comment,
     });
     return { ok: true };
   }
@@ -331,6 +333,8 @@ class IpafFormController {
       actor: this.currentRole,
       status: this.record.status,
       note,
+      decision,
+      comment: approval.comment,
     });
     return { ok: true };
   }
@@ -428,6 +432,8 @@ class IpafFormController {
       actor: this.currentRole,
       status: this.record.status,
       note: comment.trim(),
+      decision: 'Returned for Amendments',
+      comment: comment.trim(),
     });
     return { ok: true };
   }
@@ -938,6 +944,8 @@ class IpafFormController {
             actor: this.currentRole,
             status: this.record.status,
             note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+            decision: 'Resubmitted',
+            comment: (comment || '').trim(),
           });
         } else {
           this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.approverId !== returningReviewer);
@@ -948,6 +956,8 @@ class IpafFormController {
             actor: this.currentRole,
             status: this.record.status,
             note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+            decision: 'Resubmitted',
+            comment: (comment || '').trim(),
           });
         }
       } else {
@@ -964,6 +974,8 @@ class IpafFormController {
           actor: this.currentRole,
           status: this.record.status,
           note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+          decision: 'Resubmitted',
+          comment: (comment || '').trim(),
         });
       }
     } else {

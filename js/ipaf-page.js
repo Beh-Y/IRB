@@ -87,16 +87,24 @@ function renderActivityLog(record, role) {
   });
 }
 
-/* Top-of-page panel showing every comment left so far -- from IRB Member
- * votes, IRB Leadership votes, and the Secretariat's own past "Return for
- * Amendments" notes (from triage, under-review-action, or collate) -- in
- * one place, newest first. Staff reviewers (Secretariat, IRB Members, IRB
- * Leadership) see it fully identified: who left each one and their
- * decision. The PI sees the same combined comments here too, but
- * blinded -- just the text, no identity, decision, or tally -- since
- * review is meant to stay anonymous to the PI. This is now the PI's one
- * feedback panel; the mid-page IRB Member Panel / IRB Leadership Approval
- * panels stay hidden for the PI to avoid showing the same thing twice. */
+// Staff (Secretariat, IRB Members, IRB Leadership) see the full
+// conversation thread, not just the current review cycle: reviewer
+// comments and the PI's own responses on every resubmission, so a
+// re-triage or re-route that resets the working votes/leadershipApprovals
+// arrays never makes earlier comments disappear from this panel.
+const STAFF_COMMENT_ACTIONS = ['member_vote', 'leadership_vote', 'returned_for_amendments', 'resubmit'];
+
+/* Top-of-page panel showing every comment left so far. Staff reviewers
+ * (Secretariat, IRB Members, IRB Leadership) see it fully identified --
+ * who left each one, their decision, and when -- built from the permanent
+ * history log (see STAFF_COMMENT_ACTIONS above) so it survives re-triage
+ * and re-routing, in chronological order like a conversation thread. The
+ * PI sees a blinded version instead -- just the text, no identity,
+ * decision, or tally -- built from the current review cycle only, since
+ * review is meant to stay anonymous to the PI and old, already-addressed
+ * comments shouldn't linger there. This is the PI's one feedback panel;
+ * the mid-page IRB Member Panel / IRB Leadership Approval panels stay
+ * hidden for the PI to avoid showing the same thing twice. */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
   const heading = document.getElementById('comments-panel-heading');
@@ -109,15 +117,15 @@ function renderCommentsPanel(controller) {
     return;
   }
 
-  const memberEntries = controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp }));
-  const leadershipEntries = controller
-    .getLeadershipApprovals()
-    .map((a) => ({ identity: a.approverName, decision: a.decision, comment: a.comment, timestamp: a.timestamp }));
-  const secretariatEntries = (controller.record.history || [])
-    .filter((h) => h.action === 'returned_for_amendments')
-    .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp }));
-
   if (role === 'pi') {
+    const memberEntries = controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp }));
+    const leadershipEntries = controller
+      .getLeadershipApprovals()
+      .map((a) => ({ identity: a.approverName, decision: a.decision, comment: a.comment, timestamp: a.timestamp }));
+    const secretariatEntries = (controller.record.history || [])
+      .filter((h) => h.action === 'returned_for_amendments')
+      .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp }));
+
     heading.textContent = 'Reviewer Feedback';
     // "Route to Secretariat" is a reviewer deferring the decision to the
     // Secretariat, not feedback on the research itself -- leave it out of
@@ -131,7 +139,10 @@ function renderCommentsPanel(controller) {
   }
 
   heading.textContent = 'Comments';
-  const hasComments = renderIdentifiedReviewComments(list, [...memberEntries, ...leadershipEntries, ...secretariatEntries]);
+  const entries = (controller.record.history || [])
+    .filter((h) => STAFF_COMMENT_ACTIONS.includes(h.action))
+    .map((h) => ({ identity: getRoleLabel(h.actor), decision: h.decision, comment: h.comment, timestamp: h.timestamp }));
+  const hasComments = renderIdentifiedReviewComments(list, entries);
   container.hidden = !hasComments;
 }
 

@@ -317,7 +317,13 @@ class IpafFormController {
     return { ok: true };
   }
 
-  /* Secretariat's first (and only) action at For Review: send to the IRB Member panel. */
+  /* Secretariat's action at For Review: send to the IRB Member panel.
+   * Clears any Leadership approvals left over from an earlier review cycle
+   * (e.g. the record was returned and resubmitted after already reaching
+   * Leadership) -- otherwise they'd linger and incorrectly block the
+   * Secretariat's own under-review action panel from opening once these
+   * fresh member votes come in, since that panel requires
+   * getLeadershipApprovals().length === 0. */
   routeToMembersForReview(comment, memberIds) {
     const assigned = memberIds || [];
     if (assigned.length === 0) {
@@ -326,6 +332,7 @@ class IpafFormController {
     this.record.status = 'under_review';
     this.record.assignedMembers = assigned;
     this.record.votes = [];
+    this.record.leadershipApprovals = [];
     const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
     saveSubmission(this.record, {
       action: 'routed_to_members',

@@ -223,14 +223,18 @@ class IrpfFormController {
       this.record.status = 'for_revision';
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
-    } else if (this.record.routedTo === this.currentRole) {
-      /* This record had been routed straight back to just this member
-       * (after their own earlier Return bypassed the Secretariat, and the
-       * PI resubmitted to them specifically). Now that they've voted again
-       * -- Approve or Route to Secretariat -- that loop is closed, so hand
-       * it back to the Secretariat; otherwise the Secretariat's
-       * under-review action panel never reopens (it only shows for a
-       * record routedTo them). */
+    } else if (isIrbMember(this.record.routedTo) && this.record.status === 'under_review') {
+      /* This record is in a member bypass cycle -- routed straight back to
+       * whichever member(s) returned it, skipping the Secretariat -- and
+       * the PI has resubmitted (status moved to under_review; routedTo
+       * still names whichever member returned *last*, but every returning
+       * member gets a fresh vote, per submit() above). Checking the bypass
+       * is active + we're past resubmission, rather than requiring routedTo
+       * to name this exact member, means whichever one of them votes first
+       * still correctly hands it back to the Secretariat -- otherwise, if
+       * two members both returned and the "other" one (not the one
+       * routedTo happens to still point at) votes, the Secretariat's
+       * under-review action panel would never reopen. */
       const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
       this.record.routedTo = secretariat;
       note += ` Routed back to ${getRoleLabel(secretariat)}.`;
@@ -301,10 +305,15 @@ class IrpfFormController {
       this.record.status = 'for_revision';
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
-    } else if (this.record.routedTo === this.currentRole) {
-      /* Same hand-back as castVote's: this leader's own earlier Return had
-       * pinned the record to them; now that they've voted again, hand it
-       * back to the Secretariat so the collate panel reopens. */
+    } else if (isIrbLeadership(this.record.routedTo) && this.record.status === 'pending_leadership_approval') {
+      /* Same hand-back as castVote's, and the same broadened check: a
+       * leadership bypass is active and the PI has resubmitted, regardless
+       * of whether routedTo currently names this exact leader -- both the
+       * Chairman and the Co-Chairman can each Return independently before
+       * the PI ever responds, and routedTo only ever remembers whichever
+       * one did so *last*. Whichever of them votes first here still
+       * correctly hands it back to the Secretariat so the collate panel
+       * reopens. */
       const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
       this.record.routedTo = secretariat;
       note += ` Routed back to ${getRoleLabel(secretariat)}.`;
@@ -714,9 +723,17 @@ class IrpfFormController {
 
       if ((returnedByMember || returnedByLeader) && target === 'reviewer') {
         if (returnedByMember) {
-          this.record.votes = this.getVotes().filter((v) => v.voterId !== returningReviewer);
+          // Every member with a live Return on record gets a clean slate --
+          // not just whichever one routedTo happens to still point at. Two
+          // members can each Return their own feedback before the PI ever
+          // responds (routedTo only ever holds the *last* one), and the PI's
+          // combined answer is meant to go back to all of them, not just one.
+          const returningMembers = this.getVotes()
+            .filter((v) => v.decision === 'Return')
+            .map((v) => v.voterId);
+          this.record.votes = this.getVotes().filter((v) => v.decision !== 'Return');
           this.record.status = 'under_review';
-          const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for review.`;
+          const routedNote = `Resubmitted and routed back to ${returningMembers.map((id) => getRoleLabel(id)).join(', ')} for review.`;
           saveSubmission(this.record, {
             action: 'resubmit',
             actor: this.currentRole,
@@ -726,9 +743,16 @@ class IrpfFormController {
             comment: (comment || '').trim(),
           });
         } else {
-          this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.approverId !== returningReviewer);
+          // Same fix as above, for Leadership: both the Chairman and the
+          // Co-Chairman can each Return independently before the PI
+          // responds, and both need to see this as their pending action
+          // again once resubmitted -- not just whichever one returned last.
+          const returningLeaders = this.getLeadershipApprovals()
+            .filter((a) => a.decision === 'Return')
+            .map((a) => a.approverId);
+          this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.decision !== 'Return');
           this.record.status = 'pending_leadership_approval';
-          const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for approval.`;
+          const routedNote = `Resubmitted and routed back to ${returningLeaders.map((id) => getRoleLabel(id)).join(', ')} for approval.`;
           saveSubmission(this.record, {
             action: 'resubmit',
             actor: this.currentRole,

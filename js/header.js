@@ -35,11 +35,11 @@ function renderHeader(activePage) {
       ? `<a href="admin.html" class="${activePage === 'admin' ? 'active' : ''}">Admin</a>`
       : '';
 
-  // The overall report is only meaningful (and only intended) for the
-  // Secretariat and IRB Leadership -- report.js blocks direct access by
-  // URL for everyone else regardless.
+  // The overall report is meant for the Secretariat and IRB Leadership,
+  // plus the System Admin (who can see everything) -- report.js blocks
+  // direct access by URL for everyone else regardless.
   const reportLink =
-    isSecretariat(currentRole) || isIrbLeadership(currentRole)
+    isSecretariat(currentRole) || isIrbLeadership(currentRole) || currentRole === 'system-admin'
       ? `<a href="report.html" class="${activePage === 'report' ? 'active' : ''}">Report</a>`
       : '';
 

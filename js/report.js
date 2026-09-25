@@ -1,10 +1,11 @@
 /* Wires report.html: an overall view of every submitted project (IRPF,
  * IPAF, PCDF combined) for the Secretariat and IRB Leadership (Co-Chairman
- * and Chairman) roles -- summary stats plus a full listing. Restricted to
- * those roles; anyone else gets an access-denied message instead. */
+ * and Chairman) roles -- summary stats plus a full listing. Also open to
+ * the System Admin, who can see everything. Restricted to those roles;
+ * anyone else gets an access-denied message instead. */
 
 function canViewReport(role) {
-  return isSecretariat(role) || isIrbLeadership(role);
+  return isSecretariat(role) || isIrbLeadership(role) || role === 'system-admin';
 }
 
 /* IRPF/PCDF capture the PI's name directly; IPAF captures the whole

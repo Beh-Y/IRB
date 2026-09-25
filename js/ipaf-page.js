@@ -87,16 +87,18 @@ function renderActivityLog(record, role) {
   });
 }
 
-// Staff (Secretariat, IRB Members, IRB Leadership) see the full
-// conversation thread, not just the current review cycle: reviewer
-// comments and the PI's own responses on every resubmission, so a
-// re-triage or re-route that resets the working votes/leadershipApprovals
-// arrays never makes earlier comments disappear from this panel.
+// Staff (Secretariat, IRB Members, IRB Leadership, and the System Admin,
+// who can see everything) see the full conversation thread, not just the
+// current review cycle: reviewer comments and the PI's own responses on
+// every resubmission, so a re-triage or re-route that resets the working
+// votes/leadershipApprovals arrays never makes earlier comments disappear
+// from this panel.
 const STAFF_COMMENT_ACTIONS = ['member_vote', 'leadership_vote', 'returned_for_amendments', 'resubmit'];
 
 /* Top-of-page panel showing every comment left so far. Staff reviewers
- * (Secretariat, IRB Members, IRB Leadership) see it fully identified --
- * who left each one, their decision, and when -- built from the permanent
+ * (Secretariat, IRB Members, IRB Leadership, System Admin) see it fully
+ * identified -- who left each one, their decision, and when -- built from
+ * the permanent
  * history log (see STAFF_COMMENT_ACTIONS above) so it survives re-triage
  * and re-routing, in chronological order like a conversation thread. The
  * PI sees a blinded version instead -- just the text, no identity,
@@ -111,7 +113,7 @@ function renderCommentsPanel(controller) {
   const list = document.getElementById('comments-panel-list');
 
   const role = controller.currentRole;
-  const isStaffReviewer = isSecretariat(role) || isIrbMember(role) || isIrbLeadership(role);
+  const isStaffReviewer = isSecretariat(role) || isIrbMember(role) || isIrbLeadership(role) || role === 'system-admin';
   if (!isStaffReviewer && role !== 'pi') {
     container.hidden = true;
     return;

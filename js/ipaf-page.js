@@ -292,6 +292,7 @@ function initIpafPage() {
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
+  const submitToReviewersBtn = document.getElementById('btn-submit-to-reviewers');
   const approveBtn = document.getElementById('btn-approve');
   const closeBtn = document.getElementById('btn-close');
   const triagePanel = document.getElementById('triage-panel');
@@ -329,6 +330,7 @@ function initIpafPage() {
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
+  submitToReviewersBtn.hidden = true;
   approveBtn.hidden = true;
   triagePanel.hidden = true;
   voteFormPanel.hidden = true;
@@ -346,11 +348,14 @@ function initIpafPage() {
       piCommentPanel.hidden = false;
       // routedTo at this point still holds whoever returned it -- a
       // specific IRB Member/Leadership member (the bypass path) or the
-      // Secretariat itself -- so the button can say exactly who it's going
-      // back to instead of a generic "Submit".
+      // Secretariat itself. When it's a specific reviewer, the PI gets both
+      // buttons -- send it straight back to that reviewer, or loop the
+      // Secretariat in instead. When it was the Secretariat's own return,
+      // there's no specific reviewer to choose, so only one button shows.
       const returningReviewer = record.routedTo;
-      submitBtn.textContent =
-        isIrbMember(returningReviewer) || isIrbLeadership(returningReviewer) ? 'Submit to Reviewers' : 'Submit to Secretariat';
+      const isBypassReturn = isIrbMember(returningReviewer) || isIrbLeadership(returningReviewer);
+      submitBtn.textContent = 'Submit to Secretariat';
+      submitToReviewersBtn.hidden = !isBypassReturn;
     }
   } else if (controller.isPendingThisDirectorApproval()) {
     approveBtn.hidden = false;
@@ -418,9 +423,9 @@ function initIpafPage() {
     goToDashboardWithMessage('Saved as draft. A reference number is assigned once this IPAF is submitted.', 'success');
   });
 
-  submitBtn.addEventListener('click', () => {
+  function doSubmit(target) {
     const wasForRevision = record.status === 'for_revision';
-    const result = controller.submit(wasForRevision ? piCommentInput.value : undefined);
+    const result = controller.submit(wasForRevision ? piCommentInput.value : undefined, target);
     if (!result.ok) {
       const missing = describeMissingFields(result.errors, controller.fields);
       showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
@@ -432,7 +437,10 @@ function initIpafPage() {
         : `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'
     );
-  });
+  }
+
+  submitBtn.addEventListener('click', () => doSubmit('secretariat'));
+  submitToReviewersBtn.addEventListener('click', () => doSubmit('reviewer'));
 
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();

@@ -853,7 +853,13 @@ class IpafFormController {
     return { ok: true };
   }
 
-  submit(comment) {
+  /* target only matters on a resubmission (wasForRevision): 'reviewer' sends
+   * it back to the specific IRB Member/Leadership member who bypassed the
+   * Secretariat to return it (reopening just their vote); anything else
+   * (including the default, when there's no such reviewer to choose) sends
+   * it to the Secretariat instead, leaving any existing votes/approvals
+   * untouched. See castVote/castLeadershipVote for the bypass itself. */
+  submit(comment, target) {
     const errors = this.validateAll();
     this.renderErrors(errors);
     if (Object.keys(errors).length > 0) {
@@ -869,37 +875,37 @@ class IpafFormController {
 
     if (wasForRevision) {
       // Resubmission after a Return skips the Director gate either way.
-      // If a specific IRB member or leader bypassed the Secretariat to
-      // return it directly (see castVote/castLeadershipVote), it goes
-      // straight back to that same person -- reopening just their vote --
-      // instead of back through Secretariat triage.
       const returningReviewer = this.record.routedTo;
       const returnedByMember = isIrbMember(returningReviewer);
       const returnedByLeader = isIrbLeadership(returningReviewer);
 
-      if (returnedByMember) {
-        this.record.votes = this.getVotes().filter((v) => v.voterId !== returningReviewer);
-        this.record.status = 'under_review';
-        const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for review.`;
-        saveSubmission(this.record, {
-          action: 'resubmit',
-          actor: this.currentRole,
-          status: this.record.status,
-          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
-        });
-      } else if (returnedByLeader) {
-        this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.approverId !== returningReviewer);
-        this.record.status = 'pending_leadership_approval';
-        const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for approval.`;
-        saveSubmission(this.record, {
-          action: 'resubmit',
-          actor: this.currentRole,
-          status: this.record.status,
-          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
-        });
+      if ((returnedByMember || returnedByLeader) && target === 'reviewer') {
+        if (returnedByMember) {
+          this.record.votes = this.getVotes().filter((v) => v.voterId !== returningReviewer);
+          this.record.status = 'under_review';
+          const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for review.`;
+          saveSubmission(this.record, {
+            action: 'resubmit',
+            actor: this.currentRole,
+            status: this.record.status,
+            note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+          });
+        } else {
+          this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.approverId !== returningReviewer);
+          this.record.status = 'pending_leadership_approval';
+          const routedNote = `Resubmitted and routed back to ${getRoleLabel(returningReviewer)} for approval.`;
+          saveSubmission(this.record, {
+            action: 'resubmit',
+            actor: this.currentRole,
+            status: this.record.status,
+            note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+          });
+        }
       } else {
-        // Secretariat's own return -- routes straight back to the
-        // Secretariat, same as the IRPF.
+        // Submit to Secretariat -- either it was the Secretariat's own
+        // return, or the PI chose to loop the Secretariat in instead of the
+        // specific reviewer who bypassed them. Either way, any existing
+        // votes/approvals are left exactly as they are.
         const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
         this.record.routedTo = secretariat;
         this.record.status = 'pending_review';

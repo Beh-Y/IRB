@@ -93,18 +93,33 @@ function goToDashboardWithMessage(message, type) {
  * non-blinded branch in renderVotingSummary/renderLeadershipSummary.)
  * Returns true if anything was rendered, so the caller can hide the panel
  * entirely when there's nothing to show yet. */
-function renderBlindedReviewComments(list, comments) {
+/* Renders the PI's blinded feedback panel -- no reviewer identity, just
+ * each comment labeled by its place in the back-and-forth: every reviewer
+ * comment is "Feedback N", every one of the PI's own resubmission comments
+ * is "Response N", in chronological order so it reads Feedback 1, Response
+ * 1, Feedback 2, Response 2, ... like the actual conversation. Takes an
+ * array of {action, comment, timestamp} (already sorted oldest first);
+ * entries with no comment should already be filtered out by the caller.
+ * Returns true if anything was rendered, so the caller can hide the panel
+ * when there's nothing yet. */
+function renderBlindedReviewComments(list, entries) {
   list.innerHTML = '';
-  const deduped = [...new Set(comments.filter((c) => c && c.trim()))];
-  deduped.forEach((comment) => {
+  let feedbackCount = 0;
+  let responseCount = 0;
+  entries.forEach((entry) => {
+    const isResponse = entry.action === 'resubmit';
     const li = document.createElement('li');
+    const meta = document.createElement('div');
+    meta.className = 'activity-meta';
+    meta.textContent = isResponse ? `Response ${++responseCount}` : `Feedback ${++feedbackCount}`;
+    li.appendChild(meta);
     const note = document.createElement('div');
     note.className = 'activity-note';
-    note.textContent = comment;
+    note.textContent = entry.comment;
     li.appendChild(note);
     list.appendChild(li);
   });
-  return deduped.length > 0;
+  return entries.length > 0;
 }
 
 /* Renders a fully-identified list of review comments -- who left it, their

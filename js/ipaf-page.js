@@ -101,12 +101,13 @@ const STAFF_COMMENT_ACTIONS = ['member_vote', 'leadership_vote', 'returned_for_a
  * the permanent
  * history log (see STAFF_COMMENT_ACTIONS above) so it survives re-triage
  * and re-routing, in chronological order like a conversation thread. The
- * PI sees a blinded version instead -- just the text, no identity,
- * decision, or tally -- built from the current review cycle only, since
- * review is meant to stay anonymous to the PI and old, already-addressed
- * comments shouldn't linger there. This is the PI's one feedback panel;
- * the mid-page IRB Member Panel / IRB Leadership Approval panels stay
- * hidden for the PI to avoid showing the same thing twice. */
+ * PI sees a blinded version instead -- no identity or decision, just each
+ * comment labeled Feedback/Response -- built from that same permanent
+ * history so every past round (and the PI's own response to each) still
+ * shows up here, not just the current cycle: this is the PI's one
+ * feedback panel, and it's meant to read as the full back-and-forth. The
+ * mid-page IRB Member Panel / IRB Leadership Approval panels stay hidden
+ * for the PI to avoid showing the same thing twice. */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
   const heading = document.getElementById('comments-panel-heading');
@@ -120,22 +121,15 @@ function renderCommentsPanel(controller) {
   }
 
   if (role === 'pi') {
-    const memberEntries = controller.getVotes().map((v) => ({ identity: v.voterName, decision: v.decision, comment: v.comment, timestamp: v.timestamp }));
-    const leadershipEntries = controller
-      .getLeadershipApprovals()
-      .map((a) => ({ identity: a.approverName, decision: a.decision, comment: a.comment, timestamp: a.timestamp }));
-    const secretariatEntries = (controller.record.history || [])
-      .filter((h) => h.action === 'returned_for_amendments')
-      .map((h) => ({ identity: getRoleLabel(h.actor), decision: 'Returned for Amendments', comment: h.note, timestamp: h.timestamp }));
-
     heading.textContent = 'Reviewer Feedback';
     // "Route to Secretariat" is a reviewer deferring the decision to the
     // Secretariat, not feedback on the research itself -- leave it out of
     // what the PI sees so it doesn't read as an amendment request.
-    const piVisibleComments = [...memberEntries, ...leadershipEntries, ...secretariatEntries]
-      .filter((e) => e.decision !== 'Route to Secretariat')
-      .map((e) => e.comment);
-    const hasComments = renderBlindedReviewComments(list, piVisibleComments);
+    const entries = (controller.record.history || [])
+      .filter((h) => STAFF_COMMENT_ACTIONS.includes(h.action) && h.comment && h.comment.trim())
+      .filter((h) => h.decision !== 'Route to Secretariat')
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const hasComments = renderBlindedReviewComments(list, entries);
     container.hidden = !hasComments;
     return;
   }

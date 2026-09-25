@@ -402,6 +402,13 @@ function initIrpfPage() {
     if (record.status === 'for_revision') {
       showBanner('This IRPF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
       piCommentPanel.hidden = false;
+      // routedTo at this point still holds whoever returned it -- a
+      // specific IRB Member/Leadership member (the bypass path) or the
+      // Secretariat itself -- so the button can say exactly who it's going
+      // back to instead of a generic "Submit".
+      const returningReviewer = record.routedTo;
+      submitBtn.textContent =
+        isIrbMember(returningReviewer) || isIrbLeadership(returningReviewer) ? 'Submit to Reviewers' : 'Submit to Secretariat';
     }
   } else if (controller.isPendingThisDirectorApproval()) {
     approveBtn.hidden = false;

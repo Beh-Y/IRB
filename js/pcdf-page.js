@@ -64,13 +64,18 @@ function renderActivityLog(record, role) {
   // Still collapsible -- the user can close it themselves.
   container.hidden = false;
   container.open = true;
+  // PCDF has no IRB Member/Secretariat/Leadership actions of its own, but
+  // this stays consistent with the IRPF/IPAF activity logs regardless.
+  const blindIdentity = role === 'pi' || role === 'sd-director';
+
   [...entries].reverse().forEach((entry) => {
     const li = document.createElement('li');
 
     const meta = document.createElement('div');
     meta.className = 'activity-meta';
     const when = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
-    meta.textContent = `${when} — ${getRoleLabel(entry.actor)} — ${entry.action.replace(/_/g, ' ')}`;
+    const actorLabel = blindIdentity ? blindedRoleLabel(entry.actor) : getRoleLabel(entry.actor);
+    meta.textContent = `${when} — ${actorLabel} — ${entry.action.replace(/_/g, ' ')}`;
     li.appendChild(meta);
 
     // The PI sees the note text only for their own actions -- an entry
@@ -80,7 +85,7 @@ function renderActivityLog(record, role) {
     if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';
-      note.textContent = entry.note;
+      note.textContent = blindIdentity ? scrubStaffIdentities(entry.note) : entry.note;
       li.appendChild(note);
     }
 

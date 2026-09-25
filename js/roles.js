@@ -51,3 +51,29 @@ function isIrbLeadership(roleId) {
 function secretariatRoleForCategory(category) {
   return category === 'Educational Research' ? 'irb-admin-edu' : 'irb-admin-tie';
 }
+
+/* The generic term to show in place of a specific IRB Member/Secretariat/
+ * Leadership identity, for the two roles (PI, S/D Director) meant to stay
+ * blind to exactly who reviewed -- not just whether they did. Any other
+ * role (Director, the PI themselves, system) is identified normally. */
+function blindedRoleLabel(roleId) {
+  if (isIrbMember(roleId)) return 'an IRB Member';
+  if (isSecretariat(roleId)) return 'the IRB Secretariat';
+  if (isIrbLeadership(roleId)) return 'IRB Leadership';
+  return getRoleLabel(roleId);
+}
+
+/* Scrubs any IRB Member/Secretariat/Leadership role label baked into a
+ * free-text note (e.g. "...routed back to IRB Member 3 for review.") down
+ * to the same generic term blindedRoleLabel uses elsewhere -- for the
+ * Activity Log, which stores its detail as plain prose rather than
+ * structured fields, so there's no other way to keep the PI/S-D Director
+ * blind to reviewer identity there. Driven off the real role list rather
+ * than a fixed string set, so it keeps working if roles are ever renamed. */
+function scrubStaffIdentities(text) {
+  if (!text) return text;
+  return ROLES.filter((r) => isIrbMember(r.id) || isSecretariat(r.id) || isIrbLeadership(r.id)).reduce(
+    (scrubbed, r) => scrubbed.split(r.label).join(blindedRoleLabel(r.id)),
+    text
+  );
+}

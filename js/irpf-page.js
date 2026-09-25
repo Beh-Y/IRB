@@ -129,13 +129,19 @@ function renderActivityLog(record, role) {
   // Still collapsible -- the user can close it themselves.
   container.hidden = false;
   container.open = true;
+  // PI and S/D Director stay blind to exactly which IRB Member, Secretariat
+  // team, or Leadership member acted -- same as the Reviewer Feedback panel
+  // -- so their identity is generalized wherever it'd otherwise show here.
+  const blindIdentity = role === 'pi' || role === 'sd-director';
+
   [...entries].reverse().forEach((entry) => {
     const li = document.createElement('li');
 
     const meta = document.createElement('div');
     meta.className = 'activity-meta';
     const when = entry.timestamp ? new Date(entry.timestamp).toLocaleString() : '';
-    meta.textContent = `${when} — ${getRoleLabel(entry.actor)} — ${entry.action.replace(/_/g, ' ')}`;
+    const actorLabel = blindIdentity ? blindedRoleLabel(entry.actor) : getRoleLabel(entry.actor);
+    meta.textContent = `${when} — ${actorLabel} — ${entry.action.replace(/_/g, ' ')}`;
     li.appendChild(meta);
 
     // The PI sees the note text only for their own actions -- an entry
@@ -145,7 +151,7 @@ function renderActivityLog(record, role) {
     if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';
-      note.textContent = entry.note;
+      note.textContent = blindIdentity ? scrubStaffIdentities(entry.note) : entry.note;
       li.appendChild(note);
     }
 

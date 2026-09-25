@@ -94,7 +94,7 @@ function groupSubmissionsByParent() {
 
 function needsActionFromCurrentRolePcdf(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
-  if (role === 'pi') return record.status === 'approved' && !record.acknowledged;
+  if (role === 'pi') return record.status === 'draft' || (record.status === 'approved' && !record.acknowledged);
   return false;
 }
 
@@ -134,9 +134,12 @@ function needsActionFromCurrentRole(record, role) {
     );
   }
   if (role === 'pi') {
+    if (record.status === 'draft') return true;
     if (record.status === 'for_revision') return true;
-    // IPAF adds an Acknowledge step after approval that the IRPF doesn't have.
-    if (record.formType === 'IPAF' && record.status === 'approved' && !record.acknowledged) return true;
+    // Both IPAF, and IRPF when approved for exemption, add an Acknowledge
+    // step after approval -- an IRPF headed for a full IPAF instead has no
+    // acknowledgement of its own (that happens on the child IPAF).
+    if (record.status === 'approved' && !record.acknowledged) return true;
     return false;
   }
   return false;

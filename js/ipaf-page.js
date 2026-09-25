@@ -112,10 +112,13 @@ function renderCommentsPanel(controller) {
 
   if (role === 'pi') {
     heading.textContent = 'Reviewer Feedback';
-    const hasComments = renderBlindedReviewComments(
-      list,
-      [...memberEntries, ...leadershipEntries, ...secretariatEntries].map((e) => e.comment)
-    );
+    // "Route to Secretariat" is a reviewer deferring the decision to the
+    // Secretariat, not feedback on the research itself -- leave it out of
+    // what the PI sees so it doesn't read as an amendment request.
+    const piVisibleComments = [...memberEntries, ...leadershipEntries, ...secretariatEntries]
+      .filter((e) => e.decision !== 'Route to Secretariat')
+      .map((e) => e.comment);
+    const hasComments = renderBlindedReviewComments(list, piVisibleComments);
     container.hidden = !hasComments;
     return;
   }
@@ -154,6 +157,7 @@ function renderVotingSummary(controller) {
     { text: `${tally.total} of ${tally.assignedTotal} assigned member(s) voted`, cls: '' },
     { text: `${tally.approveCount} Approve`, cls: 'tally-chip--approve' },
     { text: `${tally.returnCount} Return`, cls: 'tally-chip--return' },
+    { text: `${tally.routeToSecretariatCount} Route to Secretariat`, cls: '' },
   ];
   chips.forEach((c) => {
     const chip = document.createElement('span');
@@ -217,6 +221,7 @@ function renderLeadershipSummary(controller) {
     { text: `${tally.total} of ${tally.leadershipTotal} reviewed`, cls: '' },
     { text: `${tally.approveCount} Approve`, cls: 'tally-chip--approve' },
     { text: `${tally.returnCount} Return`, cls: 'tally-chip--return' },
+    { text: `${tally.routeToSecretariatCount} Route to Secretariat`, cls: '' },
   ];
   chips.forEach((c) => {
     const chip = document.createElement('span');
@@ -306,6 +311,7 @@ function initIpafPage() {
   const voteCommentInput = document.getElementById('vote-comment');
   const voteError = document.getElementById('vote-error');
   const castVoteBtn = document.getElementById('btn-cast-vote');
+  const voteRouteToSecretariatBtn = document.getElementById('btn-vote-route-to-secretariat');
   const collatePanel = document.getElementById('collate-panel');
   const collateComment = document.getElementById('collate-comment');
   const collateError = document.getElementById('collate-error');
@@ -327,6 +333,7 @@ function initIpafPage() {
   const leadershipCommentInput = document.getElementById('leadership-comment');
   const leadershipError = document.getElementById('leadership-error');
   const leadershipVoteBtn = document.getElementById('btn-leadership-vote');
+  const leadershipRouteToSecretariatBtn = document.getElementById('btn-leadership-route-to-secretariat');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
@@ -482,6 +489,15 @@ function initIpafPage() {
     goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
   });
 
+  voteRouteToSecretariatBtn.addEventListener('click', () => {
+    const result = controller.castVote('Route to Secretariat', voteCommentInput.value);
+    if (!result.ok) {
+      voteError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Routed to the Secretariat. Thank you.', 'success');
+  });
+
   underReviewRouteToMembersBtn.addEventListener('click', () => {
     const result = controller.routeToMembersFromUnderReview(
       underReviewActionCommentInput.value,
@@ -517,6 +533,15 @@ function initIpafPage() {
       return;
     }
     goToDashboardWithMessage('Vote recorded. Thank you.', 'success');
+  });
+
+  leadershipRouteToSecretariatBtn.addEventListener('click', () => {
+    const result = controller.castLeadershipVote('Route to Secretariat', leadershipCommentInput.value);
+    if (!result.ok) {
+      leadershipError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Routed to the Secretariat. Thank you.', 'success');
   });
 
   function handleCollateDecision(action) {

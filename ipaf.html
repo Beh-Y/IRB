@@ -60,11 +60,12 @@
         <label class="radio-option"><input type="radio" name="voteDecision" value="Approve" /> Approve</label>
         <label class="radio-option"><input type="radio" name="voteDecision" value="Return" /> Return for Amendments</label>
       </div>
-      <label for="vote-comment">Comment</label>
+      <label for="vote-comment">Comment <span class="triage-hint-inline">(required for Return or Route to Secretariat)</span></label>
       <textarea id="vote-comment" rows="3"></textarea>
       <div id="vote-error" class="field-error"></div>
       <div class="triage-actions">
         <button id="btn-cast-vote" type="button" class="btn btn-primary">Submit Vote</button>
+        <button id="btn-vote-route-to-secretariat" type="button" class="btn btn-secondary">Route to Secretariat</button>
       </div>
     </div>
 
@@ -100,11 +101,12 @@
         <label class="radio-option"><input type="radio" name="leadershipDecision" value="Approve" /> Approve</label>
         <label class="radio-option"><input type="radio" name="leadershipDecision" value="Return" /> Return for Amendments</label>
       </div>
-      <label for="leadership-comment">Comment</label>
+      <label for="leadership-comment">Comment <span class="triage-hint-inline">(required for Return or Route to Secretariat)</span></label>
       <textarea id="leadership-comment" rows="3"></textarea>
       <div id="leadership-error" class="field-error"></div>
       <div class="triage-actions">
         <button id="btn-leadership-vote" type="button" class="btn btn-primary">Submit Vote</button>
+        <button id="btn-leadership-route-to-secretariat" type="button" class="btn btn-secondary">Route to Secretariat</button>
       </div>
     </div>
 

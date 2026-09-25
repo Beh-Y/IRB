@@ -89,6 +89,7 @@ class IrpfFormController {
       leadershipTotal: IRB_LEADERSHIP_IDS.length,
       approveCount: approvals.filter((a) => a.decision === 'Approve').length,
       returnCount: approvals.filter((a) => a.decision === 'Return').length,
+      routeToSecretariatCount: approvals.filter((a) => a.decision === 'Route to Secretariat').length,
     };
   }
 
@@ -170,9 +171,18 @@ class IrpfFormController {
       assignedTotal: this.getAssignedMembers().length,
       approveCount: votes.filter((v) => v.decision === 'Approve').length,
       returnCount: votes.filter((v) => v.decision === 'Return').length,
+      routeToSecretariatCount: votes.filter((v) => v.decision === 'Route to Secretariat').length,
     };
   }
 
+  /* decision is 'Approve', 'Return', or 'Route to Secretariat' -- the last
+   * one is a separate button (see irpf-page.js), not a radio option: the
+   * member defers to the Secretariat instead of deciding Approve/Return
+   * themselves. It's recorded the same way a vote is (so it still counts
+   * toward hasVoted() and the "N of M voted" tally, and it's still shown in
+   * the Comments panel to staff), but it doesn't trigger the Return bypass
+   * below, and it's excluded from the PI's blinded feedback (see
+   * renderCommentsPanel in irpf-page.js) since it's not review feedback. */
   castVote(decision, comment) {
     if (!this.isAssignedMember()) {
       return { ok: false, error: 'This IRPF was not routed to you for review.' };
@@ -180,8 +190,14 @@ class IrpfFormController {
     if (!decision) {
       return { ok: false, error: 'Select Approve or Return.' };
     }
-    if (decision === 'Return' && !(comment || '').trim()) {
-      return { ok: false, error: 'A comment is required when returning for amendments.' };
+    if ((decision === 'Return' || decision === 'Route to Secretariat') && !(comment || '').trim()) {
+      return {
+        ok: false,
+        error:
+          decision === 'Return'
+            ? 'A comment is required when returning for amendments.'
+            : 'A comment is required when routing to the Secretariat.',
+      };
     }
     if (this.hasVoted(this.currentRole)) {
       return { ok: false, error: `${getRoleLabel(this.currentRole)} has already voted on this IRPF.` };
@@ -231,6 +247,8 @@ class IrpfFormController {
     return { ok: true };
   }
 
+  /* Same three decisions as castVote -- see its comment for what 'Route to
+   * Secretariat' means and why it's handled the way it is. */
   castLeadershipVote(decision, comment) {
     if (!isIrbLeadership(this.currentRole)) {
       return { ok: false, error: 'This IRPF was not routed to you for review.' };
@@ -238,8 +256,14 @@ class IrpfFormController {
     if (!decision) {
       return { ok: false, error: 'Select Approve or Return.' };
     }
-    if (decision === 'Return' && !(comment || '').trim()) {
-      return { ok: false, error: 'A comment is required when returning for amendments.' };
+    if ((decision === 'Return' || decision === 'Route to Secretariat') && !(comment || '').trim()) {
+      return {
+        ok: false,
+        error:
+          decision === 'Return'
+            ? 'A comment is required when returning for amendments.'
+            : 'A comment is required when routing to the Secretariat.',
+      };
     }
     if (this.hasLeadershipVoted(this.currentRole)) {
       return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IRPF.` };

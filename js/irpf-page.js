@@ -100,7 +100,14 @@ function showBanner(message, type) {
 // other-triggered milestones show up in the log (see renderActivityLog
 // below), but with their note text hidden -- the PI gets the "what
 // happened," not the internal detail behind it.
-const IRPF_PI_VISIBLE_ACTIONS = ['submit', 'resubmit', 'director_approve', 'approved_for_exemption', 'to_create_ipaf'];
+const IRPF_PI_VISIBLE_ACTIONS = [
+  'submit',
+  'resubmit',
+  'director_approve',
+  'approved_for_exemption',
+  'to_create_ipaf',
+  'acknowledged',
+];
 
 function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
@@ -334,7 +341,9 @@ function describeFinalOutcome(record) {
     return 'This IRPF requires a full IPAF submission next, following full IRB Member review.';
   }
   if (record.reviewOutcome === 'exemption') {
-    return 'This IRPF was approved for exemption. No IPAF submission is required.';
+    return record.acknowledged
+      ? 'This IRPF was approved for exemption and has been acknowledged by the PI. No IPAF submission is required.'
+      : 'This IRPF was approved for exemption. No IPAF submission is required.';
   }
   return 'This IRPF is approved.';
 }
@@ -399,6 +408,8 @@ function initIrpfPage() {
   const createIpafBtn = document.getElementById('btn-create-ipaf');
   const piCommentPanel = document.getElementById('pi-comment-panel');
   const piCommentInput = document.getElementById('pi-comment');
+  const acknowledgePanel = document.getElementById('acknowledge-panel');
+  const acknowledgeBtn = document.getElementById('btn-acknowledge');
   const underReviewActionPanel = document.getElementById('under-review-action-panel');
   const underReviewActionCommentInput = document.getElementById('under-review-action-comment');
   const underReviewActionError = document.getElementById('under-review-action-error');
@@ -421,6 +432,7 @@ function initIrpfPage() {
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
   piCommentPanel.hidden = true;
+  acknowledgePanel.hidden = true;
   underReviewActionPanel.hidden = true;
   leadershipApprovalPanel.hidden = true;
 
@@ -480,6 +492,9 @@ function initIrpfPage() {
       .map((id) => getRoleLabel(id))
       .join(', ');
     showBanner(`Waiting on review from: ${pending}.`, 'info');
+  } else if (controller.isPendingAcknowledgement()) {
+    acknowledgePanel.hidden = false;
+    showBanner('This IRPF is approved for exemption. Please acknowledge your responsibilities as PI below.', 'success');
   } else if (record.status === 'pending_director_approval') {
     showBanner('Awaiting S/D Director approval before this IRPF can proceed.', 'info');
   } else if (record.status === 'pending_review') {
@@ -674,6 +689,11 @@ function initIrpfPage() {
   returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
   createIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.decideToCreateIpaf(c)));
 
+  acknowledgeBtn.addEventListener('click', () => {
+    controller.acknowledge();
+    goToDashboardWithMessage('Thank you for acknowledging your responsibilities as PI.', 'success');
+  });
+
   closeBtn.addEventListener('click', () => {
     window.location.href = 'index.html';
   });
@@ -686,6 +706,7 @@ function initIrpfPage() {
     leadershipApprovalPanel,
     collatePanel,
     ipafLinkPanel,
+    acknowledgePanel,
   ].forEach((panel) => {
     mirrorActionRow(panel, document.getElementById('bottom-panel-actions'));
   });

@@ -799,6 +799,30 @@ class IrpfFormController {
     return { ok: true };
   }
 
+  /* Only IRPFs approved for exemption need the PI to acknowledge -- one
+   * that instead went to 'to_create_ipaf' has its own acknowledgement step
+   * on the child IPAF once that's approved, so this never applies there. */
+  isPendingAcknowledgement() {
+    return (
+      this.currentRole === 'pi' &&
+      this.record.status === 'approved' &&
+      this.record.reviewOutcome === 'exemption' &&
+      !this.record.acknowledged
+    );
+  }
+
+  acknowledge() {
+    this.record.acknowledged = true;
+    this.record.acknowledgedAt = new Date().toISOString();
+    saveSubmission(this.record, {
+      action: 'acknowledged',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: 'PI acknowledged their responsibilities.',
+    });
+    return { ok: true };
+  }
+
   returnForAmendments(comment) {
     if (!comment || !comment.trim()) {
       return { ok: false, error: 'A comment is required so the PI knows what to amend.' };

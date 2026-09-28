@@ -1,7 +1,7 @@
 /* Wires outbox.html: lists every simulated email queued by js/email.js
- * (newest first), and lets the System Admin clear it out. Restricted to
- * the "INDT / System Admin" role, same as admin.html -- anyone else gets
- * an access-denied message and none of the outbox content renders. */
+ * (newest first), and lets the Secretariat or System Admin clear it out.
+ * Restricted to those roles -- anyone else gets an access-denied message
+ * and none of the outbox content renders. */
 
 function renderOutbox() {
   const outbox = getEmailOutbox();
@@ -45,10 +45,10 @@ function initOutboxPage() {
   renderHeader('outbox');
 
   const role = getCurrentRole();
-  if (role !== 'system-admin') {
+  if (!isSecretariat(role) && role !== 'system-admin') {
     document.getElementById('outbox-content').hidden = true;
     const banner = document.getElementById('status-banner');
-    banner.textContent = 'This page is restricted to the INDT / System Admin role. Switch role above to view it.';
+    banner.textContent = 'This page is restricted to the IRB Admin (Secretariat) or INDT / System Admin roles. Switch role above to view it.';
     banner.className = 'status-banner status-banner--error';
     banner.hidden = false;
     return;

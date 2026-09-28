@@ -36,10 +36,11 @@ function renderHeader(activePage) {
       : '';
 
   // The simulated Outbox (see js/email.js) is an internal preview of what
-  // would be emailed, not something any other role needs -- same audience
-  // as Admin -- and outbox.js blocks direct access by URL regardless.
+  // would be emailed -- useful to the Secretariat (who route most of the
+  // notified actions) and the System Admin, not other roles -- and
+  // outbox.js blocks direct access by URL regardless.
   const outboxLink =
-    currentRole === 'system-admin'
+    isSecretariat(currentRole) || currentRole === 'system-admin'
       ? `<a href="outbox.html" class="${activePage === 'outbox' ? 'active' : ''}">Outbox</a>`
       : '';
 

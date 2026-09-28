@@ -269,15 +269,31 @@ class IpafFormController {
     return { ok: true };
   }
 
-  /* Secretariat escalates a unanimously-approved IPAF to the Co-Chairman and Chairman. */
-  routeToLeadershipApproval(comment) {
+  /* Secretariat escalates to the Co-Chairman and Chairman -- either both
+   * (the usual case, e.g. after a unanimously-approved member panel), or
+   * just one of them (from the collate panel, to get a fresh decision from
+   * a specific leader without disturbing the other's). The Chairman and
+   * Co-Chairman are independent reviewers, same as IRB Members: only the
+   * leader(s) actually being (re-)routed to here get their existing
+   * approval cleared for a fresh vote -- the other keeps whatever decision
+   * they already made, and isn't asked to reconsider it. routedTo is
+   * pinned to one of the targeted leaders (any of them will do) purely so
+   * the existing hand-back-to-Secretariat logic in castLeadershipVote (see
+   * its comment) knows a leadership round is in progress and waits for a
+   * targeted leader to vote before reopening the Secretariat's own panel --
+   * without it, a leftover approval from the *other*, untouched leader
+   * would make it look like this round was already dealt with. */
+  routeToLeadershipApproval(comment, leaderIds) {
+    const targets = leaderIds && leaderIds.length > 0 ? leaderIds : IRB_LEADERSHIP_IDS;
     this.record.status = 'pending_leadership_approval';
-    this.record.leadershipApprovals = [];
+    this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => !targets.includes(a.approverId));
+    this.record.routedTo = targets[0];
+    const leaderLabels = targets.map((id) => getRoleLabel(id)).join(' and ');
     saveSubmission(this.record, {
       action: 'routed_to_leadership',
       actor: this.currentRole,
       status: this.record.status,
-      note: comment || 'Routed to the IRB Co-Chairman and Chairman for approval.',
+      note: comment ? `${comment} Routed to: ${leaderLabels}.` : `Routed to ${leaderLabels} for approval.`,
     });
     return { ok: true };
   }

@@ -9,6 +9,14 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+/* Flash message for a "routed to Leadership" action -- names whichever
+ * leader(s) were actually selected, since routing to just the Chairman (or
+ * just the Co-Chairman) is a real, independent choice now, not shorthand
+ * for "both". */
+function describeLeadershipRouting(leaderIds) {
+  return `Routed to ${leaderIds.map((id) => getRoleLabel(id)).join(' and ')} for approval.`;
+}
+
 function getCheckedMemberIds(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((el) => el.value);
 }
@@ -508,8 +516,8 @@ function initIpafPage() {
     }
 
     if (leaderIds.length > 0) {
-      controller.routeToLeadershipApproval(triageComment.value);
-      goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+      controller.routeToLeadershipApproval(triageComment.value, leaderIds);
+      goToDashboardWithMessage(describeLeadershipRouting(leaderIds), 'success');
       return;
     }
 
@@ -561,8 +569,8 @@ function initIpafPage() {
     }
 
     if (leaderIds.length > 0) {
-      controller.routeToLeadershipApproval(underReviewActionCommentInput.value);
-      goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+      controller.routeToLeadershipApproval(underReviewActionCommentInput.value, leaderIds);
+      goToDashboardWithMessage(describeLeadershipRouting(leaderIds), 'success');
       return;
     }
 
@@ -617,8 +625,6 @@ function initIpafPage() {
     } else if (record.status === 'under_review') {
       const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
       goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
-    } else if (record.status === 'pending_leadership_approval') {
-      goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
     } else {
       goToDashboardWithMessage('Decision recorded.', 'success');
     }
@@ -635,7 +641,8 @@ function initIpafPage() {
     }
 
     if (leaderIds.length > 0) {
-      handleCollateDecision((c) => controller.routeToLeadershipApproval(c));
+      controller.routeToLeadershipApproval(collateComment.value, leaderIds);
+      goToDashboardWithMessage(describeLeadershipRouting(leaderIds), 'success');
       return;
     }
 

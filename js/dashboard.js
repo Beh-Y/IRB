@@ -184,6 +184,27 @@ function attachDeleteAction(actionCell, record, role) {
   actionCell.appendChild(btn);
 }
 
+/* Appends a "Remind" action to a submissions-table row's Action cell --
+ * Secretariat only, and only when someone other than the viewer currently
+ * holds the record (see getCurrentHolders in email.js) -- lets them nudge
+ * a submission straight from the list, same as the "Send Reminder" button
+ * on the record's own page, without opening it first. */
+function attachReminderAction(actionCell, record, role) {
+  if (!isSecretariat(role)) return;
+  const holders = getCurrentHolders(record).filter((id) => id !== role);
+  if (holders.length === 0) return;
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-link';
+  btn.textContent = 'Remind';
+  btn.addEventListener('click', () => {
+    const sentTo = sendManualReminder(record, role);
+    window.alert(`Reminder sent to: ${sentTo.map((id) => getRoleLabel(id)).join(', ')}.`);
+  });
+  actionCell.appendChild(btn);
+}
+
 /* submissions.html: the Project Submissions (IRPF+IPAF merged) and PCDF
  * Submissions tables, plus the New IRPF/New PCDF creation buttons. */
 function renderSubmissionsPage() {
@@ -255,6 +276,7 @@ function renderSubmissionsPage() {
       actionCell.appendChild(badge);
     }
     attachDeleteAction(actionCell, record, role);
+    attachReminderAction(actionCell, record, role);
 
     tr.appendChild(actionCell);
     tr.appendChild(refCell);
@@ -404,6 +426,7 @@ function renderPcdfDashboard(role) {
       actionCell.appendChild(badge);
     }
     attachDeleteAction(actionCell, record, role);
+    attachReminderAction(actionCell, record, role);
 
     tr.appendChild(actionCell);
     tr.appendChild(refCell);

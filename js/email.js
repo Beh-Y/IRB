@@ -185,5 +185,24 @@ function sendManualReminder(record, requestingRoleId) {
     )
   );
 
+  // Also fires one real EmailJS test notification (see js/email-notify.js),
+  // same as the automatic Submit/Route/Return triggers -- guarded since
+  // this can be called from a page (e.g. submissions.html's "Remind" link)
+  // that doesn't load email-notify.js. Unlike currentFormLink in the
+  // *-page.js files (which is already sitting on the record's own page),
+  // this builds the link from scratch -- the current page here could just
+  // as easily be the submissions list -- by swapping out the current
+  // filename for the record's own form page.
+  if (typeof sendEmailNotification === 'function') {
+    const dir = window.location.pathname.replace(/[^/]*$/, '');
+    sendEmailNotification({
+      subject: `Reminder: ${formLabel} ${ref} needs your action`,
+      message: `Manual reminder from the IRB Secretariat -- ${formLabel} (${ref}) is awaiting your action.`,
+      formType: formLabel,
+      refNumber: record.data.refNumber,
+      formLink: `${window.location.origin}${dir}${formLabel.toLowerCase()}.html?id=${record.id}`,
+    });
+  }
+
   return holders;
 }

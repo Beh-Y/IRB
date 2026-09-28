@@ -218,7 +218,7 @@ class IpafFormController {
       };
     }
     if (this.hasVoted(this.currentRole)) {
-      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already voted on this IPAF.` };
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IPAF.` };
     }
 
     this.record.votes = this.getVotes();

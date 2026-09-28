@@ -200,7 +200,7 @@ class IrpfFormController {
       };
     }
     if (this.hasVoted(this.currentRole)) {
-      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already voted on this IRPF.` };
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IRPF.` };
     }
 
     this.record.votes = this.getVotes();

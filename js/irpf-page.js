@@ -239,7 +239,7 @@ function renderVotingSummary(controller) {
 
   const tally = controller.voteTally();
   const chips = [
-    { text: `${tally.total} of ${tally.assignedTotal} assigned member(s) voted`, cls: '' },
+    { text: `${tally.total} of ${tally.assignedTotal} assigned member(s) reviewed`, cls: '' },
     { text: `${tally.approveCount} Approve`, cls: 'tally-chip--approve' },
     { text: `${tally.returnCount} Return`, cls: 'tally-chip--return' },
     { text: `${tally.routeToSecretariatCount} Route to Secretariat`, cls: '' },
@@ -477,16 +477,16 @@ function initIrpfPage() {
   } else if (controller.isUnderReviewVotingOpenToMember()) {
     voteFormPanel.hidden = false;
     voterIdentityEl.textContent = getRoleLabel(role);
-    showBanner('Review the IRPF below, then cast your vote.', 'info');
+    showBanner('Review the IRPF below, then submit your review.', 'info');
   } else if (controller.isUnassignedMemberViewingUnderReview()) {
     showBanner('This IRPF is under review but was not routed to you.', 'muted');
   } else if (controller.isPendingLeadershipApproval()) {
     leadershipApprovalPanel.hidden = false;
     leadershipIdentityEl.textContent = getRoleLabel(role);
-    showBanner('Review the IRPF below, then cast your vote.', 'info');
+    showBanner('Review the IRPF below, then submit your review.', 'info');
   } else if (controller.isLeadershipWaitingOnOther()) {
     const otherName = getRoleLabel(IRB_LEADERSHIP_IDS.find((id) => id !== role));
-    showBanner(`You've voted. Waiting on ${otherName}.`, 'info');
+    showBanner(`You've submitted your review. Waiting on ${otherName}.`, 'info');
   } else if (controller.isAwaitingLeadershipApproval()) {
     const pending = IRB_LEADERSHIP_IDS.filter((id) => !controller.hasLeadershipVoted(id))
       .map((id) => getRoleLabel(id))

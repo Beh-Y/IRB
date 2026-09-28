@@ -153,7 +153,10 @@ function getCurrentHolders(record) {
       return record.acknowledged ? [] : ['pi'];
 
     case 'to_create_ipaf':
-      return ['pi'];
+      // Once the child IPAF exists, the parent IRPF itself is done -- there's
+      // no acknowledgement step of its own (that happens on the IPAF), so
+      // there's no one left to remind about this record specifically.
+      return record.childIpafId ? [] : ['pi'];
 
     default:
       return [];

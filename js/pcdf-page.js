@@ -11,21 +11,40 @@ function getQueryParam(name) {
 
 function loadOrCreateRecord() {
   const id = getQueryParam('id');
-  if (id) {
-    const existing = getSubmission(id);
-    if (existing) return existing;
+  if (!id) {
+    return {
+      id: generateId(),
+      formType: 'PCDF',
+      status: 'draft',
+      data: {},
+      history: [],
+      createdAt: null,
+      updatedAt: null,
+      acknowledged: false,
+      acknowledgedAt: null,
+    };
   }
-  return {
-    id: generateId(),
-    formType: 'PCDF',
-    status: 'draft',
-    data: {},
-    history: [],
-    createdAt: null,
-    updatedAt: null,
-    acknowledged: false,
-    acknowledgedAt: null,
-  };
+  // An id was given but doesn't match a saved record -- distinct from "no
+  // id" above, which means a brand-new draft. Returning null here lets the
+  // caller show "not found" instead of silently starting a blank draft
+  // (links from emails make this more likely: opened on a different
+  // device/browser than the one that created the record, or after it's
+  // been deleted).
+  return getSubmission(id) || null;
+}
+
+/* Real EmailJS test notification (see js/email-notify.js) -- PCDF only has
+ * one "now pending on someone else" transition (Submit, which routes to
+ * the S/D Director; there's no Secretariat/Member/Leadership stage and no
+ * for_revision status to resubmit from). */
+function notifySubmitted(record) {
+  sendEmailNotification({
+    subject: `${record.formType} ${record.data.refNumber}: submitted`,
+    message: "Submitted and now pending the S/D Director's approval.",
+    formType: record.formType,
+    refNumber: record.data.refNumber,
+    formLink: `${window.location.origin}${window.location.pathname}?id=${record.id}`,
+  });
 }
 
 function showBanner(message, type) {
@@ -98,6 +117,11 @@ function initPcdfPage() {
 
   const role = getCurrentRole();
   const record = loadOrCreateRecord();
+  if (!record) {
+    document.querySelector('main.page').innerHTML =
+      '<div class="status-banner status-banner--error">This PCDF could not be found.</div>';
+    return;
+  }
   const controller = new PcdfFormController(record, role);
 
   document.getElementById('pcdf-status-badge').textContent = getStatusLabel(record.status, 'PCDF');
@@ -168,6 +192,7 @@ function initPcdfPage() {
       showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
       return;
     }
+    notifySubmitted(record);
     goToDashboardWithMessage(
       `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'

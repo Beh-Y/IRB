@@ -17,6 +17,58 @@ function describeLeadershipRouting(leaderIds) {
   return `Routed to ${leaderIds.map((id) => getRoleLabel(id)).join(' and ')} for approval.`;
 }
 
+/* Real EmailJS test notifications (see js/email-notify.js) -- fired at the
+ * same handful of "now pending on someone else" transitions the simulated
+ * Outbox already covers, just from here instead of storage.js, and only
+ * for these four: Submit/Resubmit, Route to Members, Route to Leadership,
+ * Return for Amendments. */
+function currentFormLink(record) {
+  return `${window.location.origin}${window.location.pathname}?id=${record.id}`;
+}
+
+function notifySubmitted(record, wasForRevision) {
+  sendEmailNotification({
+    subject: `${record.formType} ${record.data.refNumber}: ${wasForRevision ? 'resubmitted' : 'submitted'}`,
+    message: wasForRevision
+      ? 'Resubmitted by the PI in response to review comments.'
+      : "Submitted and now pending the S/D Director's approval.",
+    formType: record.formType,
+    refNumber: record.data.refNumber,
+    formLink: currentFormLink(record),
+  });
+}
+
+function notifyRoutedToMembers(record) {
+  const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
+  sendEmailNotification({
+    subject: `${record.formType} ${record.data.refNumber}: routed for review`,
+    message: `Routed to ${names} for review.`,
+    formType: record.formType,
+    refNumber: record.data.refNumber,
+    formLink: currentFormLink(record),
+  });
+}
+
+function notifyRoutedToLeadership(record, leaderIds) {
+  sendEmailNotification({
+    subject: `${record.formType} ${record.data.refNumber}: routed for approval`,
+    message: describeLeadershipRouting(leaderIds),
+    formType: record.formType,
+    refNumber: record.data.refNumber,
+    formLink: currentFormLink(record),
+  });
+}
+
+function notifyReturnedForAmendments(record) {
+  sendEmailNotification({
+    subject: `${record.formType} ${record.data.refNumber}: returned for amendments`,
+    message: "Returned for amendments -- now pending the PI's response.",
+    formType: record.formType,
+    refNumber: record.data.refNumber,
+    formLink: currentFormLink(record),
+  });
+}
+
 function getCheckedMemberIds(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((el) => el.value);
 }
@@ -504,6 +556,7 @@ function initIpafPage() {
       showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
       return;
     }
+    notifySubmitted(record, wasForRevision);
     goToDashboardWithMessage(
       wasForRevision
         ? 'Resubmitted. The reviewers have been notified.'
@@ -532,6 +585,7 @@ function initIpafPage() {
 
     if (leaderIds.length > 0) {
       controller.routeToLeadershipApproval(triageComment.value, leaderIds);
+      notifyRoutedToLeadership(record, leaderIds);
       goToDashboardWithMessage(describeLeadershipRouting(leaderIds), 'success');
       return;
     }
@@ -541,6 +595,7 @@ function initIpafPage() {
       triageError.textContent = result.error;
       return;
     }
+    notifyRoutedToMembers(record);
     const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
     goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
   });
@@ -551,16 +606,23 @@ function initIpafPage() {
       triageError.textContent = result.error;
       return;
     }
+    notifyReturnedForAmendments(record);
     goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
   });
 
   castVoteBtn.addEventListener('click', () => {
     const decisionEl = voteFormPanel.querySelector('input[name="voteDecision"]:checked');
-    const result = controller.castVote(decisionEl ? decisionEl.value : null, voteCommentInput.value);
+    const decision = decisionEl ? decisionEl.value : null;
+    const result = controller.castVote(decision, voteCommentInput.value);
     if (!result.ok) {
       voteError.textContent = result.error;
       return;
     }
+    // A member's own Return bypasses the Secretariat and sends the record
+    // straight back to the PI (see castVote in ipaf-form.js) -- that's a
+    // real "now pending on someone else" transition just like the
+    // Secretariat's own Return button, so it gets the same notification.
+    if (decision === 'Return') notifyReturnedForAmendments(record);
     goToDashboardWithMessage('Action recorded. Thank you.', 'success');
   });
 
@@ -585,6 +647,7 @@ function initIpafPage() {
 
     if (leaderIds.length > 0) {
       controller.routeToLeadershipApproval(underReviewActionCommentInput.value, leaderIds);
+      notifyRoutedToLeadership(record, leaderIds);
       goToDashboardWithMessage(describeLeadershipRouting(leaderIds), 'success');
       return;
     }
@@ -594,6 +657,7 @@ function initIpafPage() {
       underReviewActionError.textContent = result.error;
       return;
     }
+    notifyRoutedToMembers(record);
     const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
     goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
   });
@@ -604,16 +668,21 @@ function initIpafPage() {
       underReviewActionError.textContent = result.error;
       return;
     }
+    notifyReturnedForAmendments(record);
     goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
   });
 
   leadershipVoteBtn.addEventListener('click', () => {
     const decisionEl = leadershipApprovalPanel.querySelector('input[name="leadershipDecision"]:checked');
-    const result = controller.castLeadershipVote(decisionEl ? decisionEl.value : null, leadershipCommentInput.value);
+    const decision = decisionEl ? decisionEl.value : null;
+    const result = controller.castLeadershipVote(decision, leadershipCommentInput.value);
     if (!result.ok) {
       leadershipError.textContent = result.error;
       return;
     }
+    // Same bypass as castVote's -- an individual leader's own Return sends
+    // it straight back to the PI, same as the Secretariat's own Return.
+    if (decision === 'Return') notifyReturnedForAmendments(record);
     goToDashboardWithMessage('Action recorded. Thank you.', 'success');
   });
 
@@ -636,8 +705,10 @@ function initIpafPage() {
     if (record.status === 'approved') {
       goToDashboardWithMessage('This IPAF is approved.', 'success');
     } else if (record.status === 'for_revision') {
+      notifyReturnedForAmendments(record);
       goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
     } else if (record.status === 'under_review') {
+      notifyRoutedToMembers(record);
       const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
       goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
     } else {
@@ -657,6 +728,7 @@ function initIpafPage() {
 
     if (leaderIds.length > 0) {
       controller.routeToLeadershipApproval(collateComment.value, leaderIds);
+      notifyRoutedToLeadership(record, leaderIds);
       goToDashboardWithMessage(describeLeadershipRouting(leaderIds), 'success');
       return;
     }

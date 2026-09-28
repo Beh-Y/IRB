@@ -9,21 +9,6 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
-function renderMemberCheckboxes(containerId, selected) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-  IRB_MEMBER_IDS.forEach((id) => {
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = id;
-    checkbox.checked = (selected || []).includes(id);
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(getRoleLabel(id)));
-    container.appendChild(label);
-  });
-}
-
 function getCheckedMemberIds(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((el) => el.value);
 }
@@ -348,7 +333,7 @@ function initIpafPage() {
   renderLeadershipSummary(controller);
   renderRouteCheckboxes('triage-route-checkboxes', record.assignedMembers);
   renderRouteCheckboxes('under-review-route-checkboxes', record.assignedMembers);
-  renderMemberCheckboxes('collate-member-checkboxes', record.assignedMembers);
+  renderRouteCheckboxes('collate-route-checkboxes', record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
@@ -369,7 +354,7 @@ function initIpafPage() {
   const collatePanel = document.getElementById('collate-panel');
   const collateComment = document.getElementById('collate-comment');
   const collateError = document.getElementById('collate-error');
-  const collateRouteToMembersBtn = document.getElementById('btn-collate-route-to-members');
+  const collateRouteBtn = document.getElementById('btn-collate-route');
   const approveIpafBtn = document.getElementById('btn-approve-ipaf');
   const returnAmendmentsBtn = document.getElementById('btn-return-amendments');
   const piCommentPanel = document.getElementById('pi-comment-panel');
@@ -632,14 +617,30 @@ function initIpafPage() {
     } else if (record.status === 'under_review') {
       const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
       goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
+    } else if (record.status === 'pending_leadership_approval') {
+      goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
     } else {
       goToDashboardWithMessage('Decision recorded.', 'success');
     }
   }
 
-  collateRouteToMembersBtn.addEventListener('click', () =>
-    handleCollateDecision((c) => controller.routeToMembersFromCollate(c, getCheckedMemberIds('collate-member-checkboxes')))
-  );
+  collateRouteBtn.addEventListener('click', () => {
+    const checked = getCheckedMemberIds('collate-route-checkboxes');
+    const memberIds = checked.filter((mid) => IRB_MEMBER_IDS.includes(mid));
+    const leaderIds = checked.filter((mid) => IRB_LEADERSHIP_IDS.includes(mid));
+
+    if (memberIds.length === 0 && leaderIds.length === 0) {
+      collateError.textContent = 'Select at least one IRB Member, or the Co-Chairman/Chairman, to route this IPAF to.';
+      return;
+    }
+
+    if (leaderIds.length > 0) {
+      handleCollateDecision((c) => controller.routeToLeadershipApproval(c));
+      return;
+    }
+
+    handleCollateDecision((c) => controller.routeToMembersFromCollate(c, memberIds));
+  });
   approveIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.approveIpaf(c)));
   returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
 

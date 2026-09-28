@@ -68,21 +68,6 @@ function createChildIpaf(irpfRecord, actorRole) {
   return ipafRecord;
 }
 
-function renderMemberCheckboxes(containerId, selected) {
-  const container = document.getElementById(containerId);
-  container.innerHTML = '';
-  IRB_MEMBER_IDS.forEach((id) => {
-    const label = document.createElement('label');
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.value = id;
-    checkbox.checked = (selected || []).includes(id);
-    label.appendChild(checkbox);
-    label.appendChild(document.createTextNode(getRoleLabel(id)));
-    container.appendChild(label);
-  });
-}
-
 function getCheckedMemberIds(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((el) => el.value);
 }
@@ -416,7 +401,7 @@ function initIrpfPage() {
   renderLeadershipSummary(controller);
   renderRouteCheckboxes('triage-route-checkboxes', record.assignedMembers);
   renderRouteCheckboxes('under-review-route-checkboxes', record.assignedMembers);
-  renderMemberCheckboxes('collate-member-checkboxes', record.assignedMembers);
+  renderRouteCheckboxes('collate-route-checkboxes', record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
@@ -449,7 +434,7 @@ function initIrpfPage() {
   const underReviewActionError = document.getElementById('under-review-action-error');
   const underReviewRouteBtn = document.getElementById('btn-under-review-route');
   const returnAmendmentsEarlyBtn = document.getElementById('btn-return-amendments-early');
-  const collateRouteToMembersBtn = document.getElementById('btn-collate-route-to-members');
+  const collateRouteBtn = document.getElementById('btn-collate-route');
   const leadershipApprovalPanel = document.getElementById('leadership-approval-panel');
   const leadershipIdentityEl = document.getElementById('leadership-identity');
   const leadershipCommentInput = document.getElementById('leadership-comment');
@@ -731,14 +716,30 @@ function initIrpfPage() {
     } else if (record.status === 'under_review') {
       const names = record.assignedMembers.map((id) => getRoleLabel(id)).join(', ');
       goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
+    } else if (record.status === 'pending_leadership_approval') {
+      goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
     } else {
       goToDashboardWithMessage('Decision recorded.', 'success');
     }
   }
 
-  collateRouteToMembersBtn.addEventListener('click', () =>
-    handleCollateDecision((c) => controller.routeToMembersFromCollate(c, getCheckedMemberIds('collate-member-checkboxes')))
-  );
+  collateRouteBtn.addEventListener('click', () => {
+    const checked = getCheckedMemberIds('collate-route-checkboxes');
+    const memberIds = checked.filter((id) => IRB_MEMBER_IDS.includes(id));
+    const leaderIds = checked.filter((id) => IRB_LEADERSHIP_IDS.includes(id));
+
+    if (memberIds.length === 0 && leaderIds.length === 0) {
+      collateError.textContent = 'Select at least one IRB Member, or the Co-Chairman/Chairman, to route this IRPF to.';
+      return;
+    }
+
+    if (leaderIds.length > 0) {
+      handleCollateDecision((c) => controller.routeToLeadershipApproval(c));
+      return;
+    }
+
+    handleCollateDecision((c) => controller.routeToMembersFromCollate(c, memberIds));
+  });
   approveExemptionBtn.addEventListener('click', () => handleCollateDecision((c) => controller.approveForExemption(c)));
   returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
   createIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.decideToCreateIpaf(c)));

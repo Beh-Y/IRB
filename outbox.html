@@ -24,6 +24,13 @@
         preview here instead, fired from the same place the real send would happen. Newest first.
       </p>
 
+      <div class="outbox-filters">
+        <label for="filter-role">Recipient</label>
+        <select id="filter-role"><option value="all">All recipients</option></select>
+        <label for="filter-record">Record</label>
+        <select id="filter-record"><option value="all">All records</option></select>
+      </div>
+
       <div class="activity-log">
         <ul id="outbox-list"></ul>
       </div>

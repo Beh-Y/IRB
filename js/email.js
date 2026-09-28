@@ -21,6 +21,7 @@ function queueEmail(toRoleId, subject, body, meta) {
   const outbox = getEmailOutbox();
   outbox.push({
     id: `email_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    toRoleId,
     to: getRoleEmail(toRoleId),
     toLabel: getRoleLabel(toRoleId),
     subject,

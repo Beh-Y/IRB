@@ -28,6 +28,41 @@ function getCheckedMemberIds(containerId) {
   return Array.from(document.querySelectorAll(`#${containerId} input:checked`)).map((el) => el.value);
 }
 
+/* Unified "Route to" checkbox list -- IRB Members and the Co-Chairman/
+ * Chairman together, single Route button, replacing what used to be two
+ * separate actions ("Route to IRB Members" / "Route to Co-Chairman &
+ * Chairman"). The two groups stay mutually exclusive -- checking one
+ * disables the other, since a record can only be in one review stage at a
+ * time -- rather than letting an invalid mixed selection reach the click
+ * handler at all. Leadership has no per-record "assigned" set the way
+ * Members do (routing there always means both), so only member ids are
+ * ever pre-checked. */
+function renderRouteCheckboxes(containerId, selectedMemberIds) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  [...IRB_MEMBER_IDS, ...IRB_LEADERSHIP_IDS].forEach((id) => {
+    const label = document.createElement('label');
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = id;
+    checkbox.checked = (selectedMemberIds || []).includes(id);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(getRoleLabel(id)));
+    container.appendChild(label);
+  });
+
+  const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"]'));
+  const enforceExclusivity = () => {
+    const memberChecked = checkboxes.some((cb) => IRB_MEMBER_IDS.includes(cb.value) && cb.checked);
+    const leadershipChecked = checkboxes.some((cb) => IRB_LEADERSHIP_IDS.includes(cb.value) && cb.checked);
+    checkboxes.forEach((cb) => {
+      cb.disabled = IRB_MEMBER_IDS.includes(cb.value) ? leadershipChecked && !cb.checked : memberChecked && !cb.checked;
+    });
+  };
+  checkboxes.forEach((cb) => cb.addEventListener('change', enforceExclusivity));
+  enforceExclusivity();
+}
+
 function showBanner(message, type) {
   const banner = document.getElementById('status-banner');
   banner.textContent = message;
@@ -311,8 +346,8 @@ function initIpafPage() {
   renderCommentsPanel(controller);
   renderVotingSummary(controller);
   renderLeadershipSummary(controller);
-  renderMemberCheckboxes('triage-member-checkboxes', record.assignedMembers);
-  renderMemberCheckboxes('under-review-member-checkboxes', record.assignedMembers);
+  renderRouteCheckboxes('triage-route-checkboxes', record.assignedMembers);
+  renderRouteCheckboxes('under-review-route-checkboxes', record.assignedMembers);
   renderMemberCheckboxes('collate-member-checkboxes', record.assignedMembers);
 
   const saveBtn = document.getElementById('btn-save');
@@ -323,8 +358,7 @@ function initIpafPage() {
   const triagePanel = document.getElementById('triage-panel');
   const triageComment = document.getElementById('triage-comment');
   const triageError = document.getElementById('triage-error');
-  const routeToMembersBtn = document.getElementById('btn-route-to-members');
-  const triageRouteToLeadershipBtn = document.getElementById('btn-triage-route-to-leadership');
+  const triageRouteBtn = document.getElementById('btn-triage-route');
   const triageReturnAmendmentsBtn = document.getElementById('btn-triage-return-amendments');
   const voteFormPanel = document.getElementById('vote-form-panel');
   const voterIdentityEl = document.getElementById('voter-identity');
@@ -345,8 +379,7 @@ function initIpafPage() {
   const underReviewActionPanel = document.getElementById('under-review-action-panel');
   const underReviewActionCommentInput = document.getElementById('under-review-action-comment');
   const underReviewActionError = document.getElementById('under-review-action-error');
-  const underReviewRouteToMembersBtn = document.getElementById('btn-under-review-route-to-members');
-  const routeToLeadershipBtn = document.getElementById('btn-route-to-leadership');
+  const underReviewRouteBtn = document.getElementById('btn-under-review-route');
   const returnAmendmentsEarlyBtn = document.getElementById('btn-return-amendments-early');
   const leadershipApprovalPanel = document.getElementById('leadership-approval-panel');
   const leadershipIdentityEl = document.getElementById('leadership-identity');
@@ -479,20 +512,29 @@ function initIpafPage() {
     goToDashboardWithMessage('Approved. Routed to the IRB Secretariat for triage.', 'success');
   });
 
-  routeToMembersBtn.addEventListener('click', () => {
-    const comment = triageComment.value;
-    const result = controller.routeToMembersForReview(comment, getCheckedMemberIds('triage-member-checkboxes'));
+  triageRouteBtn.addEventListener('click', () => {
+    const checked = getCheckedMemberIds('triage-route-checkboxes');
+    const memberIds = checked.filter((mid) => IRB_MEMBER_IDS.includes(mid));
+    const leaderIds = checked.filter((mid) => IRB_LEADERSHIP_IDS.includes(mid));
+
+    if (memberIds.length === 0 && leaderIds.length === 0) {
+      triageError.textContent = 'Select at least one IRB Member, or the Co-Chairman/Chairman, to route this IPAF to.';
+      return;
+    }
+
+    if (leaderIds.length > 0) {
+      controller.routeToLeadershipApproval(triageComment.value);
+      goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+      return;
+    }
+
+    const result = controller.routeToMembersForReview(triageComment.value, memberIds);
     if (!result.ok) {
       triageError.textContent = result.error;
       return;
     }
     const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
     goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
-  });
-
-  triageRouteToLeadershipBtn.addEventListener('click', () => {
-    controller.routeToLeadershipApproval(triageComment.value);
-    goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
   });
 
   triageReturnAmendmentsBtn.addEventListener('click', () => {
@@ -523,22 +565,29 @@ function initIpafPage() {
     goToDashboardWithMessage('Routed to the Secretariat. Thank you.', 'success');
   });
 
-  underReviewRouteToMembersBtn.addEventListener('click', () => {
-    const result = controller.routeToMembersFromUnderReview(
-      underReviewActionCommentInput.value,
-      getCheckedMemberIds('under-review-member-checkboxes')
-    );
+  underReviewRouteBtn.addEventListener('click', () => {
+    const checked = getCheckedMemberIds('under-review-route-checkboxes');
+    const memberIds = checked.filter((mid) => IRB_MEMBER_IDS.includes(mid));
+    const leaderIds = checked.filter((mid) => IRB_LEADERSHIP_IDS.includes(mid));
+
+    if (memberIds.length === 0 && leaderIds.length === 0) {
+      underReviewActionError.textContent = 'Select at least one IRB Member, or the Co-Chairman/Chairman, to route this IPAF to.';
+      return;
+    }
+
+    if (leaderIds.length > 0) {
+      controller.routeToLeadershipApproval(underReviewActionCommentInput.value);
+      goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
+      return;
+    }
+
+    const result = controller.routeToMembersFromUnderReview(underReviewActionCommentInput.value, memberIds);
     if (!result.ok) {
       underReviewActionError.textContent = result.error;
       return;
     }
     const names = record.assignedMembers.map((mid) => getRoleLabel(mid)).join(', ');
     goToDashboardWithMessage(`Routed to ${names} for review.`, 'success');
-  });
-
-  routeToLeadershipBtn.addEventListener('click', () => {
-    controller.routeToLeadershipApproval(underReviewActionCommentInput.value);
-    goToDashboardWithMessage('Routed to the IRB Co-Chairman and Chairman for approval.', 'success');
   });
 
   returnAmendmentsEarlyBtn.addEventListener('click', () => {

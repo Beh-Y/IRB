@@ -380,11 +380,13 @@ function initIpafPage() {
   const leadershipError = document.getElementById('leadership-error');
   const leadershipVoteBtn = document.getElementById('btn-leadership-vote');
   const leadershipRouteToSecretariatBtn = document.getElementById('btn-leadership-route-to-secretariat');
+  const sendReminderBtn = document.getElementById('btn-send-reminder');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
   submitToReviewersBtn.hidden = true;
   approveBtn.hidden = true;
+  sendReminderBtn.hidden = true;
   triagePanel.hidden = true;
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
@@ -470,6 +472,19 @@ function initIpafPage() {
   } else if (record.status === 'draft') {
     showBanner('You are viewing this draft in read-only mode for your current role.', 'muted');
   }
+
+  // Lets the Secretariat manually nudge whoever currently holds the ball
+  // (see getCurrentHolders in email.js) independent of whichever action
+  // panel is showing above -- hidden whenever that's the viewer themselves
+  // (they'd act directly, not remind themselves) or there's no one to nudge.
+  if (isSecretariat(role) && getCurrentHolders(record).filter((id) => id !== role).length > 0) {
+    sendReminderBtn.hidden = false;
+  }
+
+  sendReminderBtn.addEventListener('click', () => {
+    const sentTo = sendManualReminder(record, role);
+    showBanner(`Reminder sent to: ${sentTo.map((id) => getRoleLabel(id)).join(', ')}.`, 'success');
+  });
 
   saveBtn.addEventListener('click', () => {
     controller.save();

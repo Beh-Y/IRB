@@ -110,3 +110,76 @@ function notifyByEmail(record, historyEntry) {
       break;
   }
 }
+
+/* Who currently holds the ball on a record, independent of any particular
+ * action -- used to let the Secretariat manually nudge whoever that is
+ * (see sendManualReminder below), rather than waiting for the next state
+ * change to fire notifyByEmail(). Mirrors the same status/routedTo/votes/
+ * leadershipApprovals fields the controllers' own isPending... / isAwaiting...
+ * predicates read, simplified to "who's actionable right now" without
+ * needing a role to test against. */
+function getCurrentHolders(record) {
+  const status = record.status;
+  const votes = record.votes || [];
+  const leadershipApprovals = record.leadershipApprovals || [];
+  const assignedMembers = record.assignedMembers || [];
+
+  switch (status) {
+    case 'pending_director_approval':
+      return ['sd-director'];
+
+    case 'pending_review':
+      return record.routedTo ? [record.routedTo] : [];
+
+    case 'for_revision':
+      return ['pi'];
+
+    case 'under_review': {
+      const pendingMembers = assignedMembers.filter((memberId) => !votes.some((v) => v.voterId === memberId));
+      if (pendingMembers.length > 0) return pendingMembers;
+      return record.routedTo ? [record.routedTo] : [];
+    }
+
+    case 'pending_leadership_approval': {
+      const pendingLeaders = IRB_LEADERSHIP_IDS.filter(
+        (leaderId) => !leadershipApprovals.some((a) => a.approverId === leaderId)
+      );
+      if (pendingLeaders.length > 0) return pendingLeaders;
+      return record.routedTo ? [record.routedTo] : [];
+    }
+
+    case 'approved':
+      return record.acknowledged ? [] : ['pi'];
+
+    case 'to_create_ipaf':
+      return ['pi'];
+
+    default:
+      return [];
+  }
+}
+
+/* Manually queues a "Reminder:" email to whoever currently holds the
+ * record, on demand -- the Secretariat's counterpart to the automatic,
+ * action-triggered emails above. Excludes the requester themselves (no
+ * point reminding yourself; if you're the holder, the page already shows
+ * you the panel to act on it directly) and doesn't touch record.history --
+ * it's a nudge, not a workflow action. Returns the role ids it sent to. */
+function sendManualReminder(record, requestingRoleId) {
+  const holders = getCurrentHolders(record).filter((roleId) => roleId !== requestingRoleId);
+  if (holders.length === 0) return holders;
+
+  const formLabel = record.formType;
+  const ref = record.data.refNumber || record.data.projectTitle || `this ${formLabel}`;
+
+  holders.forEach((roleId) =>
+    queueEmail(
+      roleId,
+      `Reminder: ${formLabel} ${ref} needs your action`,
+      `This is a reminder from the IRB Secretariat that ${formLabel} (${ref}) is awaiting your action.`,
+      { recordId: record.id, formType: record.formType, action: 'manual_reminder', sentBy: requestingRoleId }
+    )
+  );
+
+  return holders;
+}

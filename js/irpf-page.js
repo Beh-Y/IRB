@@ -415,6 +415,7 @@ function initIrpfPage() {
   const submitBtn = document.getElementById('btn-submit');
   const submitToReviewersBtn = document.getElementById('btn-submit-to-reviewers');
   const approveBtn = document.getElementById('btn-approve');
+  const sendReminderBtn = document.getElementById('btn-send-reminder');
   const closeBtn = document.getElementById('btn-close');
   const triagePanel = document.getElementById('triage-panel');
   const triageComment = document.getElementById('triage-comment');
@@ -454,6 +455,7 @@ function initIrpfPage() {
   submitBtn.hidden = true;
   submitToReviewersBtn.hidden = true;
   approveBtn.hidden = true;
+  sendReminderBtn.hidden = true;
   triagePanel.hidden = true;
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
@@ -536,6 +538,19 @@ function initIrpfPage() {
   } else if (record.status === 'draft') {
     showBanner('You are viewing this draft in read-only mode for your current role.', 'muted');
   }
+
+  // Lets the Secretariat manually nudge whoever currently holds the ball
+  // (see getCurrentHolders in email.js) independent of whichever action
+  // panel is showing above -- hidden whenever that's the viewer themselves
+  // (they'd act directly, not remind themselves) or there's no one to nudge.
+  if (isSecretariat(role) && getCurrentHolders(record).filter((id) => id !== role).length > 0) {
+    sendReminderBtn.hidden = false;
+  }
+
+  sendReminderBtn.addEventListener('click', () => {
+    const sentTo = sendManualReminder(record, role);
+    showBanner(`Reminder sent to: ${sentTo.map((id) => getRoleLabel(id)).join(', ')}.`, 'success');
+  });
 
   const ipafLinkPanel = document.getElementById('ipaf-link-panel');
   const createIpafChildBtn = document.getElementById('btn-create-ipaf-child');

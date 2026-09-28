@@ -21,8 +21,8 @@
  * - Template ID: Email Templates -> your template
  * - Public Key: Account (top right) -> API Keys
  */
-const EMAILJS_PUBLIC_KEY = 'PASTE_EMAILJS_PUBLIC_KEY';
-const EMAILJS_SERVICE_ID = 'PASTE_EMAILJS_SERVICE_ID';
+const EMAILJS_PUBLIC_KEY = 'HTwjRMzQ4kQGGRKdj';
+const EMAILJS_SERVICE_ID = 'service_blos6xn';
 const EMAILJS_TEMPLATE_ID = 'PASTE_EMAILJS_TEMPLATE_ID';
 
 if (typeof emailjs !== 'undefined') {

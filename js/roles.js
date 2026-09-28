@@ -1,17 +1,21 @@
 /* Role definitions and the client-side "Preview as" role switcher state. */
 
+/* `email` is a synthetic placeholder address for the simulated Outbox (see
+ * js/email.js) -- there's no real per-user identity in this app (each role
+ * is a shared persona, not a signed-in person), so these stand in for
+ * "wherever the real notification would go" rather than a real inbox. */
 const ROLES = [
-  { id: 'pi', label: 'Principal Investigator (PI)', group: 'SP Staff' },
-  { id: 'sd-director', label: 'School/Department Director', group: 'SP Staff' },
-  { id: 'poc', label: 'Point of Contact (POC)', group: 'SP Staff' },
-  { id: 'irb-admin-edu', label: 'IRB Admin – EDU Secretariat', group: 'SP Staff' },
-  { id: 'irb-admin-tie', label: 'IRB Admin – TIE Secretariat', group: 'SP Staff' },
-  { id: 'irb-member-1', label: 'IRB Member 1', group: 'SP Staff' },
-  { id: 'irb-member-2', label: 'IRB Member 2', group: 'SP Staff' },
-  { id: 'irb-member-3', label: 'IRB Member 3', group: 'SP Staff' },
-  { id: 'irb-co-chairman', label: 'IRB Co-Chairman', group: 'SP Staff' },
-  { id: 'irb-chairman', label: 'IRB Chairman', group: 'SP Staff' },
-  { id: 'system-admin', label: 'INDT / System Admin', group: 'SP Staff' },
+  { id: 'pi', label: 'Principal Investigator (PI)', group: 'SP Staff', email: 'pi@sp.edu.sg' },
+  { id: 'sd-director', label: 'School/Department Director', group: 'SP Staff', email: 'sd-director@sp.edu.sg' },
+  { id: 'poc', label: 'Point of Contact (POC)', group: 'SP Staff', email: 'poc@sp.edu.sg' },
+  { id: 'irb-admin-edu', label: 'IRB Admin – EDU Secretariat', group: 'SP Staff', email: 'irb-secretariat-edu@sp.edu.sg' },
+  { id: 'irb-admin-tie', label: 'IRB Admin – TIE Secretariat', group: 'SP Staff', email: 'irb-secretariat-tie@sp.edu.sg' },
+  { id: 'irb-member-1', label: 'IRB Member 1', group: 'SP Staff', email: 'irb-member1@sp.edu.sg' },
+  { id: 'irb-member-2', label: 'IRB Member 2', group: 'SP Staff', email: 'irb-member2@sp.edu.sg' },
+  { id: 'irb-member-3', label: 'IRB Member 3', group: 'SP Staff', email: 'irb-member3@sp.edu.sg' },
+  { id: 'irb-co-chairman', label: 'IRB Co-Chairman', group: 'SP Staff', email: 'irb-co-chairman@sp.edu.sg' },
+  { id: 'irb-chairman', label: 'IRB Chairman', group: 'SP Staff', email: 'irb-chairman@sp.edu.sg' },
+  { id: 'system-admin', label: 'INDT / System Admin', group: 'SP Staff', email: 'indt-admin@sp.edu.sg' },
 ];
 
 /* The selectable IRB Member personas, in the order the Secretariat assigns them. */
@@ -33,6 +37,11 @@ function setCurrentRole(roleId) {
 function getRoleLabel(roleId) {
   const role = ROLES.find((r) => r.id === roleId);
   return role ? role.label : roleId;
+}
+
+function getRoleEmail(roleId) {
+  const role = ROLES.find((r) => r.id === roleId);
+  return role ? role.email : `${roleId}@sp.edu.sg`;
 }
 
 function isSecretariat(roleId) {

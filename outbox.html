@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Admin – SP IRB Process Management</title>
+  <title>Outbox – SP IRB Process Management</title>
   <link rel="stylesheet" href="css/styles.css" />
 </head>
 <body>
@@ -13,26 +13,20 @@
     <div id="status-banner" class="status-banner" hidden></div>
 
     <div class="page-header">
-      <h1>Reference Number Counters</h1>
+      <h1>Outbox</h1>
+      <button id="btn-clear-outbox" type="button" class="btn btn-secondary">Clear Outbox</button>
     </div>
 
-    <div id="admin-content">
+    <div id="outbox-content">
       <p class="triage-hint">
-        The last-assigned sequence number per form type and month/year period. Each counter increments once, on
-        first Submit, and never changes afterwards -- a draft that's only ever Saved doesn't touch it.
+        This app has no backend, so it can't send real email -- every action that would normally notify someone
+        (a submission, a routing decision, a review, a resubmission, a final outcome) instantly queues a realistic
+        preview here instead, fired from the same place the real send would happen. Newest first.
       </p>
 
-      <table class="submissions-table">
-        <thead>
-          <tr>
-            <th>Form Type</th>
-            <th>Period (MM-YYYY)</th>
-            <th>Last Assigned</th>
-            <th>Next Sequence</th>
-          </tr>
-        </thead>
-        <tbody id="ref-counters-body"></tbody>
-      </table>
+      <div class="activity-log">
+        <ul id="outbox-list"></ul>
+      </div>
     </div>
   </main>
 
@@ -43,6 +37,6 @@
   <script src="js/status.js"></script>
   <script src="js/header.js"></script>
   <script src="js/form-utils.js"></script>
-  <script src="js/admin.js"></script>
+  <script src="js/outbox.js"></script>
 </body>
 </html>

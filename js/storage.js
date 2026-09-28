@@ -205,5 +205,14 @@ function saveSubmission(record, historyEntry) {
   }
 
   writeJSON(STORAGE_KEYS.SUBMISSIONS, all);
+
+  // Fires the simulated instant per-action email (see js/email.js) from
+  // this one place, right as the state change that would trigger it is
+  // persisted -- typeof-guarded since a couple of pages that never touch a
+  // submission's history (e.g. admin.html) don't load email.js.
+  if (historyEntry && typeof notifyByEmail === 'function') {
+    notifyByEmail(record, historyEntry);
+  }
+
   return record;
 }

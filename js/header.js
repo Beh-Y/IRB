@@ -35,6 +35,14 @@ function renderHeader(activePage) {
       ? `<a href="admin.html" class="${activePage === 'admin' ? 'active' : ''}">Admin</a>`
       : '';
 
+  // The simulated Outbox (see js/email.js) is an internal preview of what
+  // would be emailed, not something any other role needs -- same audience
+  // as Admin -- and outbox.js blocks direct access by URL regardless.
+  const outboxLink =
+    currentRole === 'system-admin'
+      ? `<a href="outbox.html" class="${activePage === 'outbox' ? 'active' : ''}">Outbox</a>`
+      : '';
+
   // The overall report is meant for the Secretariat and IRB Leadership,
   // plus the System Admin (who can see everything) -- report.js blocks
   // direct access by URL for everyone else regardless.
@@ -61,6 +69,7 @@ function renderHeader(activePage) {
         ${newSubmissionDropdown}
         ${reportLink}
         ${adminLink}
+        ${outboxLink}
       </nav>
       <div class="header-role-switcher">
         <label for="role-select">Preview as</label>

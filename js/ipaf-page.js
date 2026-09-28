@@ -451,6 +451,11 @@ function initIpafPage() {
   });
 
   function doSubmit(target) {
+    // Validation errors show in the status banner at the top of the page,
+    // but a long form (like the IPAF) can easily have the user scrolled
+    // well past it when they click Submit -- jump back to the top so the
+    // banner (or, on success, the redirect) is actually seen either way.
+    window.scrollTo(0, 0);
     const wasForRevision = record.status === 'for_revision';
     const result = controller.submit(wasForRevision ? piCommentInput.value : undefined, target);
     if (!result.ok) {

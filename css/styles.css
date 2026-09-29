@@ -152,11 +152,14 @@ body {
   margin-bottom: 1rem;
 }
 
-.outbox-filters select {
+.outbox-filters select,
+.outbox-filters input[type='text'] {
   padding: 0.35rem 0.5rem;
   border-radius: 6px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
+  color: inherit;
+  font-size: inherit;
 }
 
 .page {

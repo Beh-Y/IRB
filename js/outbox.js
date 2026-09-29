@@ -1,11 +1,21 @@
 /* Wires outbox.html: lists every simulated email queued by js/email.js
- * (newest first), lets it be filtered by recipient role or by which
- * record it's about, and lets the Secretariat or System Admin clear it
- * out. Restricted to those roles -- anyone else gets an access-denied
- * message and none of the outbox content renders. */
+ * (newest first), lets it be filtered by recipient role, which record
+ * it's about, which action triggered it, or a subject/body search, and
+ * lets the Secretariat or System Admin clear it out. Restricted to those
+ * roles -- anyone else gets an access-denied message and none of the
+ * outbox content renders. */
 
 let outboxRoleFilter = 'all';
 let outboxRecordFilter = 'all';
+let outboxActionFilter = 'all';
+let outboxSearchFilter = '';
+
+/* Same humanization as the Activity Log (entry.action.replace(/_/g, ' '))
+ * -- reused here rather than a separate label map, so "routed_to_members"
+ * reads as "routed to members" in the Action dropdown too. */
+function outboxActionLabel(action) {
+  return action ? action.replace(/_/g, ' ') : 'Unknown';
+}
 
 /* Best-effort label for the "Record" filter/list -- looks up the live
  * submission for its reference number, falling back to formType + a
@@ -21,12 +31,15 @@ function outboxRecordLabel(email) {
 function populateOutboxFilters(outbox) {
   const roleSelect = document.getElementById('filter-role');
   const recordSelect = document.getElementById('filter-record');
+  const actionSelect = document.getElementById('filter-action');
 
   const roles = new Map();
   const records = new Map();
+  const actions = new Map();
   outbox.forEach((email) => {
     if (email.toRoleId) roles.set(email.toRoleId, email.toLabel || getRoleLabel(email.toRoleId));
     if (email.recordId) records.set(email.recordId, outboxRecordLabel(email));
+    if (email.action) actions.set(email.action, outboxActionLabel(email.action));
   });
 
   const rebuild = (select, entries, currentValue, allLabel) => {
@@ -52,16 +65,20 @@ function populateOutboxFilters(outbox) {
 
   outboxRoleFilter = rebuild(roleSelect, roles, outboxRoleFilter, 'All recipients');
   outboxRecordFilter = rebuild(recordSelect, records, outboxRecordFilter, 'All records');
+  outboxActionFilter = rebuild(actionSelect, actions, outboxActionFilter, 'All actions');
 }
 
 function renderOutbox() {
   const outbox = getEmailOutbox();
   populateOutboxFilters(outbox);
 
+  const search = outboxSearchFilter.trim().toLowerCase();
   const filtered = outbox.filter(
     (email) =>
       (outboxRoleFilter === 'all' || email.toRoleId === outboxRoleFilter) &&
-      (outboxRecordFilter === 'all' || email.recordId === outboxRecordFilter)
+      (outboxRecordFilter === 'all' || email.recordId === outboxRecordFilter) &&
+      (outboxActionFilter === 'all' || email.action === outboxActionFilter) &&
+      (!search || `${email.subject} ${email.body}`.toLowerCase().includes(search))
   );
 
   const list = document.getElementById('outbox-list');
@@ -129,11 +146,24 @@ function initOutboxPage() {
     renderOutbox();
   });
 
+  document.getElementById('filter-action').addEventListener('change', (e) => {
+    outboxActionFilter = e.target.value;
+    renderOutbox();
+  });
+
+  document.getElementById('filter-search').addEventListener('input', (e) => {
+    outboxSearchFilter = e.target.value;
+    renderOutbox();
+  });
+
   document.getElementById('btn-clear-outbox').addEventListener('click', () => {
     if (!window.confirm('Clear every queued email? This cannot be undone.')) return;
     clearEmailOutbox();
     outboxRoleFilter = 'all';
     outboxRecordFilter = 'all';
+    outboxActionFilter = 'all';
+    outboxSearchFilter = '';
+    document.getElementById('filter-search').value = '';
     renderOutbox();
   });
 }

@@ -81,6 +81,15 @@ function notifyByEmail(record, historyEntry) {
     case 'leadership_vote':
       if (historyEntry.decision === 'Return') {
         send('pi', `${formLabel} ${ref}: returned for amendments`, `Your ${formLabel} (${ref}) has been returned for amendments. Please see the comments and resubmit.`);
+      } else if (record.status === 'pending_leadership_approval' && isIrbLeadership(record.routedTo)) {
+        // This vote was the one that completed the member panel with every
+        // assigned member approving -- see castVote's auto-route in
+        // irpf-form.js/ipaf-form.js -- so it skipped the Secretariat and
+        // went straight to Leadership. Same "who was just cleared"
+        // derivation as the routed_to_leadership case above.
+        IRB_LEADERSHIP_IDS.filter((leaderId) => !(record.leadershipApprovals || []).some((a) => a.approverId === leaderId)).forEach(
+          (leaderId) => send(leaderId, `${formLabel} ${ref}: awaiting your approval`, `A ${formLabel} (${ref}) has been routed to you for approval.`)
+        );
       } else if (isSecretariat(record.routedTo)) {
         send(record.routedTo, `${formLabel} ${ref}: a review has come in`, `A review has been recorded for ${formLabel} (${ref}). It's ready for your action.`);
       }

@@ -626,8 +626,22 @@ function initIpafPage() {
     // straight back to the PI (see castVote in ipaf-form.js) -- that's a
     // real "now pending on someone else" transition just like the
     // Secretariat's own Return button, so it gets the same notification.
-    if (decision === 'Return') notifyReturnedForAmendments(record);
-    goToDashboardWithMessage('Action recorded. Thank you.', 'success');
+    if (decision === 'Return') {
+      notifyReturnedForAmendments(record);
+      goToDashboardWithMessage('Action recorded. Thank you.', 'success');
+    } else if (record.status === 'pending_leadership_approval' && isIrbLeadership(record.routedTo)) {
+      // This vote completed the member panel with every assigned member
+      // approving, auto-routing straight to Leadership (see castVote's
+      // auto-route in ipaf-form.js) -- same notification as a Secretariat-
+      // triggered Route to Leadership.
+      notifyRoutedToLeadership(record, IRB_LEADERSHIP_IDS);
+      goToDashboardWithMessage(
+        `All members approved. ${describeLeadershipRouting(IRB_LEADERSHIP_IDS)}`,
+        'success'
+      );
+    } else {
+      goToDashboardWithMessage('Action recorded. Thank you.', 'success');
+    }
   });
 
   voteRouteToSecretariatBtn.addEventListener('click', () => {

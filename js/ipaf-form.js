@@ -241,6 +241,25 @@ class IpafFormController {
       this.record.status = 'for_revision';
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
+    } else if (
+      this.getAssignedMembers().length > 0 &&
+      this.record.votes.length === this.getAssignedMembers().length &&
+      this.record.votes.every((v) => v.decision === 'Approve')
+    ) {
+      /* Every assigned member has now approved -- auto-route straight to
+       * the Co-Chairman and Chairman rather than waiting for the
+       * Secretariat to do it manually. Same effect as
+       * routeToLeadershipApproval() below, just triggered by the vote
+       * that completes the panel instead of a Secretariat click -- this
+       * takes priority over the member-bypass hand-back-to-Secretariat
+       * case right below, so a bypass round that ends in full approval
+       * (not just the returning member's own) also skips straight to
+       * Leadership instead of looping through the Secretariat once more. */
+      const targets = IRB_LEADERSHIP_IDS;
+      this.record.status = 'pending_leadership_approval';
+      this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => !targets.includes(a.approverId));
+      this.record.routedTo = targets[0];
+      note += ` All assigned members approved -- automatically routed to ${targets.map((id) => getRoleLabel(id)).join(' and ')} for approval.`;
     } else if (isIrbMember(this.record.routedTo) && this.record.status === 'under_review') {
       /* This record is in a member bypass cycle -- routed straight back to
        * whichever member(s) returned it, skipping the Secretariat -- and

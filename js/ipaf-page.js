@@ -115,21 +115,24 @@ function showBanner(message, type) {
   banner.hidden = false;
 }
 
-// The PI never sees the review process itself (routing, votes, returns) --
-// only their own actions (submit, resubmit, acknowledge) plus two milestones
-// triggered by someone else: the S/D Director's approval and the final
-// outcome. Those other-triggered milestones show up in the log (see
-// renderActivityLog below), but with their note text hidden -- the PI gets
-// the "what happened," not the internal detail behind it.
-const IPAF_PI_VISIBLE_ACTIONS = ['submit', 'resubmit', 'director_approve', 'approved', 'acknowledged'];
+// The PI, S/D Director, and POC never see the review process itself
+// (routing, votes, returns) -- only the handful of milestones below, and
+// even those show up with their note text hidden unless they were the one
+// who triggered it -- they get the "what happened," not the internal
+// detail behind it. Everyone else (Secretariat, IRB Members, IRB
+// Leadership, System Admin) sees the full log.
+const IPAF_LIMITED_VISIBILITY_ROLES = ['pi', 'sd-director', 'poc'];
+const IPAF_LIMITED_VISIBILITY_ACTIONS = ['submit', 'resubmit', 'director_approve', 'approved', 'acknowledged'];
 
 function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
   const list = document.getElementById('activity-log-list');
   list.innerHTML = '';
 
-  const entries =
-    role === 'pi' ? (record.history || []).filter((h) => IPAF_PI_VISIBLE_ACTIONS.includes(h.action)) : record.history || [];
+  const limitedVisibility = IPAF_LIMITED_VISIBILITY_ROLES.includes(role);
+  const entries = limitedVisibility
+    ? (record.history || []).filter((h) => IPAF_LIMITED_VISIBILITY_ACTIONS.includes(h.action))
+    : record.history || [];
 
   if (entries.length === 0) {
     container.hidden = true;
@@ -143,10 +146,10 @@ function renderActivityLog(record, role) {
   // Still collapsible -- the user can close it themselves.
   container.hidden = false;
   container.open = true;
-  // PI and S/D Director stay blind to exactly which IRB Member, Secretariat
+  // Same roles as above stay blind to exactly which IRB Member, Secretariat
   // team, or Leadership member acted -- same as the Reviewer Feedback panel
   // -- so their identity is generalized wherever it'd otherwise show here.
-  const blindIdentity = role === 'pi' || role === 'sd-director';
+  const blindIdentity = limitedVisibility;
 
   [...entries].reverse().forEach((entry) => {
     const li = document.createElement('li');
@@ -158,10 +161,11 @@ function renderActivityLog(record, role) {
     meta.textContent = `${when} — ${actorLabel} — ${entry.action.replace(/_/g, ' ')}`;
     li.appendChild(meta);
 
-    // The PI sees the note text only for their own actions -- an entry
-    // someone else triggered (Director approval, the final decision) shows
-    // just the milestone and when it happened, not the detail behind it.
-    const showNote = role !== 'pi' || entry.actor === 'pi';
+    // A limited-visibility viewer sees the note text only for their own
+    // actions -- an entry someone else triggered (Director approval, the
+    // final decision) shows just the milestone and when it happened, not
+    // the detail behind it.
+    const showNote = !limitedVisibility || entry.actor === role;
     if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';

@@ -54,22 +54,26 @@ function showBanner(message, type) {
   banner.hidden = false;
 }
 
-// The PI never sees the review process itself -- only their own actions
-// (submit, acknowledge) plus one milestone triggered by someone else: the
-// S/D Director's approval (which is also the final outcome for a PCDF --
-// there's no Secretariat or IRB Member review stage). That other-triggered
-// milestone shows up in the log (see renderActivityLog below), but with its
-// note text hidden -- the PI gets the "what happened," not the internal
-// detail behind it.
-const PCDF_PI_VISIBLE_ACTIONS = ['submit', 'director_approve', 'acknowledged'];
+// The PI, S/D Director, and POC never see the review process itself --
+// only their own actions (submit, acknowledge) plus one milestone
+// triggered by someone else: the S/D Director's approval (which is also
+// the final outcome for a PCDF -- there's no Secretariat or IRB Member
+// review stage). That other-triggered milestone shows up in the log (see
+// renderActivityLog below), but with its note text hidden unless they
+// were the one who triggered it -- they get the "what happened," not the
+// internal detail behind it.
+const PCDF_LIMITED_VISIBILITY_ROLES = ['pi', 'sd-director', 'poc'];
+const PCDF_LIMITED_VISIBILITY_ACTIONS = ['submit', 'director_approve', 'acknowledged'];
 
 function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
   const list = document.getElementById('activity-log-list');
   list.innerHTML = '';
 
-  const entries =
-    role === 'pi' ? (record.history || []).filter((h) => PCDF_PI_VISIBLE_ACTIONS.includes(h.action)) : record.history || [];
+  const limitedVisibility = PCDF_LIMITED_VISIBILITY_ROLES.includes(role);
+  const entries = limitedVisibility
+    ? (record.history || []).filter((h) => PCDF_LIMITED_VISIBILITY_ACTIONS.includes(h.action))
+    : record.history || [];
 
   if (entries.length === 0) {
     container.hidden = true;
@@ -85,7 +89,7 @@ function renderActivityLog(record, role) {
   container.open = true;
   // PCDF has no IRB Member/Secretariat/Leadership actions of its own, but
   // this stays consistent with the IRPF/IPAF activity logs regardless.
-  const blindIdentity = role === 'pi' || role === 'sd-director';
+  const blindIdentity = limitedVisibility;
 
   [...entries].reverse().forEach((entry) => {
     const li = document.createElement('li');
@@ -97,10 +101,11 @@ function renderActivityLog(record, role) {
     meta.textContent = `${when} — ${actorLabel} — ${entry.action.replace(/_/g, ' ')}`;
     li.appendChild(meta);
 
-    // The PI sees the note text only for their own actions -- an entry
-    // someone else triggered (the Director's approval) shows just the
-    // milestone and when it happened, not the detail behind it.
-    const showNote = role !== 'pi' || entry.actor === 'pi';
+    // A limited-visibility viewer sees the note text only for their own
+    // actions -- an entry someone else triggered (the Director's approval)
+    // shows just the milestone and when it happened, not the detail
+    // behind it.
+    const showNote = !limitedVisibility || entry.actor === role;
     if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';

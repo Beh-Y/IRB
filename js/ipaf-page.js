@@ -700,8 +700,19 @@ function initIpafPage() {
     }
     // Same bypass as castVote's -- an individual leader's own Return sends
     // it straight back to the PI, same as the Secretariat's own Return.
-    if (decision === 'Return') notifyReturnedForAmendments(record);
-    goToDashboardWithMessage('Action recorded. Thank you.', 'success');
+    if (decision === 'Return') {
+      notifyReturnedForAmendments(record);
+      goToDashboardWithMessage('Action recorded. Thank you.', 'success');
+    } else if (record.status === 'approved') {
+      // Both leaders just approved, auto-finalizing it (see
+      // castLeadershipVote's auto-finalize in ipaf-form.js) -- same
+      // milestone as a Secretariat-clicked Approve, so it gets the exact
+      // same simulated-Outbox notification (notifyByEmail's 'approved'
+      // case, keyed off history action) with no extra call needed here.
+      goToDashboardWithMessage('Both leaders approved. This IPAF is now approved.', 'success');
+    } else {
+      goToDashboardWithMessage('Action recorded. Thank you.', 'success');
+    }
   });
 
   leadershipRouteToSecretariatBtn.addEventListener('click', () => {

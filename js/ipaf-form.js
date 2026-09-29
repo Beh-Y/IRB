@@ -358,6 +358,29 @@ class IpafFormController {
       this.record.status = 'for_revision';
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
+    } else if (
+      this.record.leadershipApprovals.length === IRB_LEADERSHIP_IDS.length &&
+      this.record.leadershipApprovals.every((a) => a.decision === 'Approve')
+    ) {
+      /* Both leaders have now approved -- auto-finalize as Approved rather
+       * than waiting for the Secretariat's collate panel, same effect as
+       * approveIpaf() below, just triggered by the vote that completes
+       * leadership approval (unlike IRPF, there's no ambiguity here -- an
+       * IPAF's only outcomes are Approve/Return, so there's nothing left
+       * for the Secretariat to choose between). Recorded as the terminal
+       * 'approved' action (not 'leadership_vote') so it reads as the same
+       * milestone a Secretariat-clicked Approve would -- matters for the
+       * PI's limited Activity Log view (see IPAF_LIMITED_VISIBILITY_ACTIONS
+       * in ipaf-page.js) and for notifyByEmail's existing 'approved' case
+       * in email.js, both keyed off that action name. */
+      this.record.status = 'approved';
+      saveSubmission(this.record, {
+        action: 'approved',
+        actor: this.currentRole,
+        status: this.record.status,
+        note: `${note} Both leaders approved -- automatically finalized as Approved.`,
+      });
+      return { ok: true };
     } else if (isIrbLeadership(this.record.routedTo) && this.record.status === 'pending_leadership_approval') {
       /* Same hand-back as castVote's, and the same broadened check: a
        * leadership bypass is active and the PI has resubmitted, regardless

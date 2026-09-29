@@ -349,10 +349,17 @@ function renderPendingActionTable(role) {
     // been submitted to them -- so this one status reads as just "Pending
     // Approval" here, even though the fuller "Draft – Pending Director
     // Approval" label is kept everywhere else (Submissions, Report, etc.).
+    // Same idea for IRB Leadership: the shared "Pending Chairman Approval"
+    // label (used everywhere else since it names the specific milestone)
+    // reads oddly on the Co-Chairman's own to-do list -- it's just as much
+    // their approval pending as the Chairman's -- so both leaders see the
+    // neutral "Pending Approval" here instead.
     statusCell.textContent =
       role === 'sd-director' && record.status === 'pending_director_approval'
         ? 'Pending Approval'
-        : getStatusLabel(record.status, record.formType);
+        : isIrbLeadership(role) && record.status === 'pending_leadership_approval'
+          ? 'Pending Approval'
+          : getStatusLabel(record.status, record.formType);
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';

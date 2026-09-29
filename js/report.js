@@ -43,6 +43,13 @@ function renderStatChips(container, counts) {
 let reportRowsIrpfIpaf = [];
 let reportRowsPcdf = [];
 
+/* Column filters (see js/table-filters.js) can hide rows without touching
+ * reportRowsIrpfIpaf/reportRowsPcdf -- these track which of that table's
+ * rows are currently visible, so the export functions below can filter
+ * down to just those and keep the "exports what's on screen" promise. */
+let irpfIpafFilters = { isRowVisible: () => true };
+let pcdfFilters = { isRowVisible: () => true };
+
 function buildIrpfIpafRow(record) {
   return {
     Form: record.formType,
@@ -122,12 +129,28 @@ function renderReport() {
     return row;
   });
   renderRowsIntoTable('report-irpf-ipaf-body', reportRowsIrpfIpaf, 'No IRPF or IPAF projects have been submitted yet.');
+  irpfIpafFilters = attachColumnFilters(document.getElementById('report-irpf-ipaf-body').closest('table'), [
+    'select',
+    'text',
+    'text',
+    'text',
+    'select',
+    'select',
+    'text',
+  ]);
 
   // PCDF is standalone (no parent-child relationship), so it gets its own
   // table, sorted newest first.
   const pcdfRecords = sortByRefNumber(getSubmissionsByType('PCDF'), 'PCDF').filter((r) => r.status !== 'draft');
   reportRowsPcdf = pcdfRecords.map(buildPcdfRow);
   renderRowsIntoTable('report-pcdf-body', reportRowsPcdf, 'No PCDF projects have been submitted yet.');
+  pcdfFilters = attachColumnFilters(document.getElementById('report-pcdf-body').closest('table'), [
+    'text',
+    'text',
+    'text',
+    'select',
+    'text',
+  ]);
 }
 
 function stripInternalFields(rows) {
@@ -205,16 +228,20 @@ function initReportPage() {
   renderReport();
 
   document.getElementById('btn-export-irpf-ipaf-excel').addEventListener('click', () =>
-    exportRowsToExcel(reportRowsIrpfIpaf, 'IRPF & IPAF', 'IRB-Report-IRPF-IPAF')
+    exportRowsToExcel(reportRowsIrpfIpaf.filter((_, i) => irpfIpafFilters.isRowVisible(i)), 'IRPF & IPAF', 'IRB-Report-IRPF-IPAF')
   );
   document.getElementById('btn-export-irpf-ipaf-pdf').addEventListener('click', () =>
-    exportRowsToPdf(reportRowsIrpfIpaf, 'IRPF & IPAF Submissions', 'IRB-Report-IRPF-IPAF')
+    exportRowsToPdf(
+      reportRowsIrpfIpaf.filter((_, i) => irpfIpafFilters.isRowVisible(i)),
+      'IRPF & IPAF Submissions',
+      'IRB-Report-IRPF-IPAF'
+    )
   );
   document.getElementById('btn-export-pcdf-excel').addEventListener('click', () =>
-    exportRowsToExcel(reportRowsPcdf, 'PCDF', 'IRB-Report-PCDF')
+    exportRowsToExcel(reportRowsPcdf.filter((_, i) => pcdfFilters.isRowVisible(i)), 'PCDF', 'IRB-Report-PCDF')
   );
   document.getElementById('btn-export-pcdf-pdf').addEventListener('click', () =>
-    exportRowsToPdf(reportRowsPcdf, 'PCDF Submissions', 'IRB-Report-PCDF')
+    exportRowsToPdf(reportRowsPcdf.filter((_, i) => pcdfFilters.isRowVisible(i)), 'PCDF Submissions', 'IRB-Report-PCDF')
   );
 }
 

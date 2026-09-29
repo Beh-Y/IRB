@@ -660,6 +660,26 @@ body {
   background: #fffbeb;
 }
 
+/* Per-column filter row (see js/table-filters.js) -- sits right under the
+ * header labels, styled like a second header row so it reads as part of
+ * the table chrome rather than data. */
+.column-filter-row td {
+  padding: 0.4rem 0.6rem;
+  background: var(--color-muted-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.column-filter-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.8rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: inherit;
+}
+
 /* Indents an IPAF row's reference number, since it's grouped directly under
  * its parent IRPF row rather than sorted independently. Targets the second
  * column (Reference No.) since Action is now the leftmost column. */

@@ -290,6 +290,8 @@ function renderSubmissionsPage() {
     tbody.appendChild(tr);
   });
 
+  attachColumnFilters(tbody.closest('table'), [null, 'text', 'select', 'text', 'select', 'text', 'text', 'select', 'text']);
+
   renderPcdfDashboard(role);
 }
 
@@ -311,7 +313,6 @@ function renderPendingActionTable(role) {
     const emptyRow = document.createElement('tr');
     emptyRow.innerHTML = '<td colspan="9" class="empty-state">Nothing needs your action right now.</td>';
     tbody.appendChild(emptyRow);
-    return;
   }
 
   pending.forEach((record) => {
@@ -375,6 +376,8 @@ function renderPendingActionTable(role) {
     tr.appendChild(updatedCell);
     tbody.appendChild(tr);
   });
+
+  attachColumnFilters(tbody.closest('table'), [null, 'select', 'text', 'text', 'select', 'text', 'text', 'select', 'text']);
 }
 
 /* PCDF is a standalone form (no parent-child relationship to the IRPF), so
@@ -395,7 +398,6 @@ function renderPcdfDashboard(role) {
     const emptyRow = document.createElement('tr');
     emptyRow.innerHTML = '<td colspan="7" class="empty-state">No PCDF submissions yet.</td>';
     tbody.appendChild(emptyRow);
-    return;
   }
 
   submissions.forEach((record) => {
@@ -444,6 +446,8 @@ function renderPcdfDashboard(role) {
     tr.appendChild(updatedCell);
     tbody.appendChild(tr);
   });
+
+  attachColumnFilters(tbody.closest('table'), [null, 'text', 'text', 'text', 'text', 'select', 'text']);
 }
 
 document.addEventListener('DOMContentLoaded', () => {

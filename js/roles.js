@@ -1,9 +1,16 @@
 /* Role definitions and the client-side "Preview as" role switcher state. */
 
-/* `email` is a synthetic placeholder address for the simulated Outbox (see
- * js/email.js) -- there's no real per-user identity in this app (each role
- * is a shared persona, not a signed-in person), so these stand in for
- * "wherever the real notification would go" rather than a real inbox. */
+/* `email` is a synthetic placeholder address for each role -- there's no
+ * real per-user identity in this app (each role is a shared persona, not a
+ * signed-in person), so these stand in for "wherever the real notification
+ * would go" in a real deployment. getRoleEmail() below currently ignores
+ * them, though, and always returns the one real test inbox connected in
+ * EmailJS (see js/email-notify.js) -- that mechanism already sends every
+ * real notification to that single address regardless of role, so the
+ * simulated Outbox (js/email.js) matches that same "where does this
+ * actually go right now" reality rather than implying per-role delivery
+ * the app doesn't yet have. Swap getRoleEmail back to reading `email` below
+ * once there are real per-role addresses to send to. */
 const ROLES = [
   { id: 'pi', label: 'Principal Investigator (PI)', group: 'SP Staff', email: 'pi@sp.edu.sg' },
   { id: 'sd-director', label: 'School/Department Director', group: 'SP Staff', email: 'sd-director@sp.edu.sg' },
@@ -39,9 +46,10 @@ function getRoleLabel(roleId) {
   return role ? role.label : roleId;
 }
 
+const TEST_INBOX_EMAIL = 'spirbtest@gmail.com';
+
 function getRoleEmail(roleId) {
-  const role = ROLES.find((r) => r.id === roleId);
-  return role ? role.email : `${roleId}@sp.edu.sg`;
+  return TEST_INBOX_EMAIL;
 }
 
 function isSecretariat(roleId) {

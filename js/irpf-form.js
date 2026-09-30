@@ -7,6 +7,15 @@
  * reading) live in form-utils.js, loaded before this file.
  */
 
+// Pair (pair.gov.sg) assistants pre-loaded with guidance for filling out
+// this IRPF, split by research category since the two assistants are
+// tuned to different sections/requirements.
+const CATEGORY_PAIR_ASSISTANT_LINKS = {
+  'Educational Research': 'https://pair.gov.sg/chat?assistant=assistant_7824ec8f-159b-45a1-9db0-14729744daef',
+  'Biomedical Research': 'https://pair.gov.sg/chat?assistant=assistant_9ed66f9f-fa41-42fb-b18b-c8c4cd670de9',
+  Others: 'https://pair.gov.sg/chat?assistant=assistant_9ed66f9f-fa41-42fb-b18b-c8c4cd670de9',
+};
+
 class IrpfFormController {
   constructor(record, currentRole) {
     this.record = record;
@@ -504,6 +513,30 @@ class IrpfFormController {
         group.appendChild(optLabel);
       });
       controlWrap.appendChild(group);
+
+      if (field.id === 'categoryOfResearch') {
+        const guidance = document.createElement('div');
+        guidance.className = 'category-guidance';
+        guidance.hidden = true;
+
+        const desc = document.createElement('p');
+        desc.className = 'triage-hint';
+        desc.textContent =
+          'Get step-by-step guidance filling out this IRPF, tailored to your selected research category, from the ' +
+          'SP IRB Pair Assistant.';
+        guidance.appendChild(desc);
+
+        const link = document.createElement('a');
+        link.className = 'btn btn-secondary';
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = 'Get Guidance from Pair Assistant';
+        guidance.appendChild(link);
+
+        controlWrap.appendChild(guidance);
+        this.categoryGuidanceEls = { guidance, link };
+      }
+
       return group;
     }
 
@@ -637,6 +670,14 @@ class IrpfFormController {
         els.hintEl.textContent = '';
       }
     });
+
+    if (this.categoryGuidanceEls) {
+      // Guidance for filling out the form only makes sense while the PI can
+      // still edit it -- not for reviewers/other roles viewing it later.
+      const url = this.isEditableByPi() ? CATEGORY_PAIR_ASSISTANT_LINKS[data.categoryOfResearch] : null;
+      this.categoryGuidanceEls.guidance.hidden = !url;
+      if (url) this.categoryGuidanceEls.link.href = url;
+    }
   }
 
   isRequired(field, data) {

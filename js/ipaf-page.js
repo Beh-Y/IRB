@@ -339,7 +339,7 @@ function initIpafPage() {
   const statusBadge = document.getElementById('ipaf-status-badge');
   statusBadge.textContent = getStatusLabel(record.status, 'IPAF');
   statusBadge.className = `status-badge ${getStatusBadgeClass(record.status)}`;
-  renderPipelineStepper(document.getElementById('pipeline-stepper'), record);
+  renderPipelineStepper(document.getElementById('pipeline-stepper'), record, role);
   document.getElementById('link-back-to-irpf').href = `irpf.html?id=${record.parentIrpfId}`;
   controller.mount(document.getElementById('ipaf-form-container'));
   renderActivityLog(record, role);

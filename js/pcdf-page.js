@@ -118,7 +118,7 @@ function initPcdfPage() {
   const statusBadge = document.getElementById('pcdf-status-badge');
   statusBadge.textContent = getStatusLabel(record.status, 'PCDF');
   statusBadge.className = `status-badge ${getStatusBadgeClass(record.status)}`;
-  renderPipelineStepper(document.getElementById('pipeline-stepper'), record);
+  renderPipelineStepper(document.getElementById('pipeline-stepper'), record, role);
   controller.mount(document.getElementById('pcdf-form-container'));
   renderActivityLog(record, role);
 

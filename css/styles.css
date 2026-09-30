@@ -246,6 +246,92 @@ body {
   color: var(--color-teal-text);
 }
 
+/* Pipeline stepper (see js/pipeline-stepper.js) -- a horizontal row of
+ * stages, each a dot + label, connected by a line. Every step is an equal
+ * flex share of the row; the connector before a step is a pseudo-element
+ * spanning from the previous step's dot center to this one's, sitting
+ * behind the dots (z-index) so it visually passes through them. */
+.pipeline-stepper {
+  display: flex;
+  margin-bottom: 1.25rem;
+}
+
+.pipeline-step {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.pipeline-step:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--color-border);
+  z-index: 0;
+}
+
+.pipeline-step--complete:not(:first-child)::before,
+.pipeline-step--current:not(:first-child)::before {
+  background: var(--color-primary);
+}
+
+.pipeline-step-dot {
+  position: relative;
+  z-index: 1;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.pipeline-step-label {
+  margin-top: 0.4rem;
+  padding: 0 0.25rem;
+  font-size: 0.72rem;
+  color: var(--color-text-muted);
+}
+
+.pipeline-step--complete .pipeline-step-dot {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.pipeline-step--current .pipeline-step-dot {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-info-bg);
+}
+
+.pipeline-step--current .pipeline-step-label {
+  color: var(--color-text);
+  font-weight: 700;
+}
+
+.pipeline-step--returned .pipeline-step-dot {
+  border-color: var(--color-error-text);
+  color: var(--color-error-text);
+  box-shadow: 0 0 0 3px var(--color-error-bg);
+}
+
+.pipeline-step--returned .pipeline-step-label {
+  color: var(--color-error-text);
+  font-weight: 700;
+}
+
 .status-banner {
   padding: 0.75rem 1rem;
   border-radius: 8px;

@@ -453,6 +453,7 @@ function initIrpfPage() {
   const createIpafBtn = document.getElementById('btn-create-ipaf');
   const piCommentPanel = document.getElementById('pi-comment-panel');
   const piCommentInput = document.getElementById('pi-comment');
+  const piCommentError = document.getElementById('pi-comment-error');
   const acknowledgePanel = document.getElementById('acknowledge-panel');
   const acknowledgeBtn = document.getElementById('btn-acknowledge');
   const underReviewActionPanel = document.getElementById('under-review-action-panel');
@@ -614,6 +615,14 @@ function initIrpfPage() {
     // banner (or, on success, the redirect) is actually seen either way.
     window.scrollTo(0, 0);
     const wasForRevision = record.status === 'for_revision';
+    piCommentError.textContent = '';
+    // Whichever reviewer picks this back up -- the Secretariat, or the
+    // specific reviewer who returned it -- needs to know what changed;
+    // required on both paths rather than left as an afterthought.
+    if (wasForRevision && !piCommentInput.value.trim()) {
+      piCommentError.textContent = 'A comment is required before resubmitting.';
+      return;
+    }
     const result = controller.submit(wasForRevision ? piCommentInput.value : undefined, target);
     if (!result.ok) {
       const missing = describeMissingFields(result.errors, controller.fields);

@@ -565,6 +565,15 @@ class IpafFormController {
         sectionEl.appendChild(grid);
       }
 
+      if (section.id === 'projectDetails') {
+        // The IPAF has no Category of Research field of its own -- it's
+        // carried straight from the parent IRPF at creation (see
+        // createChildIpaf) -- so the guidance box sits here, next to that
+        // form's other carried-over fields, rather than beside a selector.
+        this.categoryGuidanceEls = buildCategoryGuidanceBox();
+        sectionEl.appendChild(this.categoryGuidanceEls.guidance);
+      }
+
       container.appendChild(sectionEl);
     });
 
@@ -907,6 +916,14 @@ class IpafFormController {
         els.hintEl.textContent = '';
       }
     });
+
+    if (this.categoryGuidanceEls) {
+      // Guidance for filling out the form only makes sense while the PI can
+      // still edit it -- not for reviewers/other roles viewing it later.
+      const url = this.isEditableByPi() ? CATEGORY_PAIR_ASSISTANT_LINKS[data.categoryOfResearch] : null;
+      this.categoryGuidanceEls.guidance.hidden = !url;
+      if (url) this.categoryGuidanceEls.link.href = url;
+    }
   }
 
   isRequired(field, data) {

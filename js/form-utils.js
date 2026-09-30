@@ -9,6 +9,42 @@ function flattenFields(schema) {
   return schema.flatMap((section) => section.fields);
 }
 
+// Pair (pair.gov.sg) assistants pre-loaded with guidance for filling out the
+// IRPF/IPAF, split by research category since the two assistants are tuned
+// to different sections/requirements. Shared by irpf-form.js (where the PI
+// picks the category) and ipaf-form.js (which just inherits it from the
+// parent IRPF).
+const CATEGORY_PAIR_ASSISTANT_LINKS = {
+  'Educational Research': 'https://pair.gov.sg/chat?assistant=assistant_7824ec8f-159b-45a1-9db0-14729744daef',
+  'Biomedical Research': 'https://pair.gov.sg/chat?assistant=assistant_9ed66f9f-fa41-42fb-b18b-c8c4cd670de9',
+  Others: 'https://pair.gov.sg/chat?assistant=assistant_9ed66f9f-fa41-42fb-b18b-c8c4cd670de9',
+};
+
+// The guidance description + link, shared verbatim between the IRPF and
+// IPAF forms so the two never drift.
+function buildCategoryGuidanceBox() {
+  const guidance = document.createElement('div');
+  guidance.className = 'category-guidance';
+  guidance.hidden = true;
+
+  const desc = document.createElement('p');
+  desc.className = 'triage-hint';
+  desc.textContent =
+    'Get step-by-step guidance filling out this page, tailored to your selected research category, from the ' +
+    'SP IRB Pair Assistant — trained on relevant IRB knowledge, fine-tuned from past cases, and cleared to ' +
+    'handle data classified up to Restricted.';
+  guidance.appendChild(desc);
+
+  const link = document.createElement('a');
+  link.className = 'btn btn-secondary';
+  link.target = '_blank';
+  link.rel = 'noopener';
+  link.textContent = 'Get Guidance from Pair Assistant';
+  guidance.appendChild(link);
+
+  return { guidance, link };
+}
+
 function countWords(str) {
   return (str || '').trim().split(/\s+/).filter(Boolean).length;
 }

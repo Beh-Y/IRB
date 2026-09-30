@@ -13,6 +13,12 @@
   --color-info-bg: #eff6ff;
   --color-info-text: #1e40af;
   --color-muted-bg: #f3f4f6;
+  --color-warning-bg: #fffbeb;
+  --color-warning-text: #92400e;
+  --color-leadership-bg: #f5f3ff;
+  --color-leadership-text: #6d28d9;
+  --color-teal-bg: #f0fdfa;
+  --color-teal-text: #0f766e;
 }
 
 * {
@@ -194,11 +200,50 @@ body {
 
 .status-badge {
   display: inline-block;
+  max-width: 100%;
   padding: 0.2rem 0.6rem;
   border-radius: 999px;
   background: var(--color-muted-bg);
   color: var(--color-text-muted);
   font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* Color per pipeline stage (see getStatusBadgeClass in status.js) -- lets
+ * every status-showing spot in the app (record pages, every table) read
+ * at a glance without parsing the label text: gray for not-yet-submitted,
+ * amber for waiting on one specific person, blue/purple for active
+ * member/leadership review, red for bounced back, green for done, teal
+ * for the one-off "needs a follow-up form" outcome. */
+.status-badge--warning {
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
+}
+
+.status-badge--info {
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+}
+
+.status-badge--leadership {
+  background: var(--color-leadership-bg);
+  color: var(--color-leadership-text);
+}
+
+.status-badge--error {
+  background: var(--color-error-bg);
+  color: var(--color-error-text);
+}
+
+.status-badge--success {
+  background: var(--color-success-bg);
+  color: var(--color-success-text);
+}
+
+.status-badge--teal {
+  background: var(--color-teal-bg);
+  color: var(--color-teal-text);
 }
 
 .status-banner {

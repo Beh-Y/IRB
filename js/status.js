@@ -26,3 +26,24 @@ function getStatusLabel(status, formType) {
   if (override && override[status]) return override[status];
   return STATUS_LABELS[status] || status;
 }
+
+/* Color-codes a status badge by pipeline stage, independent of form type
+ * or label text -- draft (gray) -> pending on one specific person (amber)
+ * -> active member review (blue) -> active leadership review (purple) ->
+ * bounced back (red) or done (green), plus IRPF's one-off "needs a follow-
+ * up form" outcome (teal). Returns the modifier class alone (e.g.
+ * 'status-badge--warning'); combine with the base 'status-badge' class. */
+const STATUS_BADGE_CLASSES = {
+  draft: 'status-badge',
+  pending_director_approval: 'status-badge--warning',
+  pending_review: 'status-badge--warning',
+  under_review: 'status-badge--info',
+  pending_leadership_approval: 'status-badge--leadership',
+  for_revision: 'status-badge--error',
+  approved: 'status-badge--success',
+  to_create_ipaf: 'status-badge--teal',
+};
+
+function getStatusBadgeClass(status) {
+  return STATUS_BADGE_CLASSES[status] || 'status-badge';
+}

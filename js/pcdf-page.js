@@ -115,7 +115,9 @@ function initPcdfPage() {
   }
   const controller = new PcdfFormController(record, role);
 
-  document.getElementById('pcdf-status-badge').textContent = getStatusLabel(record.status, 'PCDF');
+  const statusBadge = document.getElementById('pcdf-status-badge');
+  statusBadge.textContent = getStatusLabel(record.status, 'PCDF');
+  statusBadge.className = `status-badge ${getStatusBadgeClass(record.status)}`;
   controller.mount(document.getElementById('pcdf-form-container'));
   renderActivityLog(record, role);
 

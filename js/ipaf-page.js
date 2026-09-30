@@ -336,7 +336,9 @@ function initIpafPage() {
 
   const controller = new IpafFormController(record, role);
 
-  document.getElementById('ipaf-status-badge').textContent = getStatusLabel(record.status, 'IPAF');
+  const statusBadge = document.getElementById('ipaf-status-badge');
+  statusBadge.textContent = getStatusLabel(record.status, 'IPAF');
+  statusBadge.className = `status-badge ${getStatusBadgeClass(record.status)}`;
   document.getElementById('link-back-to-irpf').href = `irpf.html?id=${record.parentIrpfId}`;
   controller.mount(document.getElementById('ipaf-form-container'));
   renderActivityLog(record, role);

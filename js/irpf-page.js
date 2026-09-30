@@ -415,7 +415,9 @@ function initIrpfPage() {
   }
   const controller = new IrpfFormController(record, role);
 
-  document.getElementById('irpf-status-badge').textContent = getStatusLabel(record.status);
+  const statusBadge = document.getElementById('irpf-status-badge');
+  statusBadge.textContent = getStatusLabel(record.status);
+  statusBadge.className = `status-badge ${getStatusBadgeClass(record.status)}`;
   controller.mount(document.getElementById('irpf-form-container'));
   renderActivityLog(record, role);
   renderCommentsPanel(controller);

@@ -12,6 +12,18 @@ function formatIsoDate(isoDate) {
   return `${day}-${months[Number(month) - 1]}-${year}`;
 }
 
+/* A colored status pill (see getStatusBadgeClass in status.js) -- the
+ * `label` is passed separately from `status` rather than derived here, so
+ * a caller with its own override text (e.g. the S/D Director's/IRB
+ * Leadership's own "Pending Approval" wording on their to-do list) still
+ * gets the right color for the underlying status. */
+function buildStatusBadge(status, label) {
+  const badge = document.createElement('span');
+  badge.className = `status-badge ${getStatusBadgeClass(status)}`;
+  badge.textContent = label;
+  return badge;
+}
+
 /* Sort key for a "<PREFIX>-MM-YYYY-XXX..." reference number that orders
  * chronologically (year, then month, then sequence) -- a plain string
  * compare gets this wrong whenever a later year has an earlier-looking
@@ -273,7 +285,7 @@ function renderSubmissionsPage() {
     endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
 
     const statusCell = document.createElement('td');
-    statusCell.textContent = getStatusLabel(record.status, record.formType);
+    statusCell.appendChild(buildStatusBadge(record.status, getStatusLabel(record.status, record.formType)));
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';
@@ -370,12 +382,13 @@ function renderPendingActionTable(role) {
     // reads oddly on the Co-Chairman's own to-do list -- it's just as much
     // their approval pending as the Chairman's -- so both leaders see the
     // neutral "Pending Approval" here instead.
-    statusCell.textContent =
+    const statusLabel =
       role === 'sd-director' && record.status === 'pending_director_approval'
         ? 'Pending Approval'
         : isIrbLeadership(role) && record.status === 'pending_leadership_approval'
           ? 'Pending Approval'
           : getStatusLabel(record.status, record.formType);
+    statusCell.appendChild(buildStatusBadge(record.status, statusLabel));
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';
@@ -436,7 +449,7 @@ function renderPcdfDashboard(role) {
     endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
 
     const statusCell = document.createElement('td');
-    statusCell.textContent = getStatusLabel(record.status, 'PCDF');
+    statusCell.appendChild(buildStatusBadge(record.status, getStatusLabel(record.status, 'PCDF')));
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';

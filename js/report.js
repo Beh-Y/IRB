@@ -59,6 +59,7 @@ function buildIrpfIpafRow(record) {
     Category: record.data.categoryOfResearch || '—',
     Status: getStatusLabel(record.status, record.formType),
     'Last Updated': record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—',
+    __statusCode: record.status,
   };
 }
 
@@ -69,6 +70,7 @@ function buildPcdfRow(record) {
     'Project Title': record.data.projectTitle || '(untitled)',
     Status: getStatusLabel(record.status, 'PCDF'),
     'Last Updated': record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—',
+    __statusCode: record.status,
   };
 }
 
@@ -90,7 +92,16 @@ function renderRowsIntoTable(tbodyId, rows, emptyMessage) {
     Object.entries(row).forEach(([key, value]) => {
       if (key.startsWith('__')) return;
       const td = document.createElement('td');
-      td.textContent = value;
+      // Status gets the same colored badge as everywhere else in the app,
+      // via __statusCode (a raw status like 'pending_review', kept off
+      // screen and stripped before export -- see stripInternalFields --
+      // since the exported sheet/PDF wants the plain label, same as
+      // every other column).
+      if (key === 'Status' && row.__statusCode) {
+        td.appendChild(buildStatusBadge(row.__statusCode, value));
+      } else {
+        td.textContent = value;
+      }
       tr.appendChild(td);
     });
     tbody.appendChild(tr);
@@ -154,7 +165,7 @@ function renderReport() {
 }
 
 function stripInternalFields(rows) {
-  return rows.map(({ __isChild, ...row }) => row);
+  return rows.map((row) => Object.fromEntries(Object.entries(row).filter(([key]) => !key.startsWith('__'))));
 }
 
 /* Exports exactly what's in one table as a real .xlsx file via SheetJS

@@ -522,8 +522,9 @@ class IrpfFormController {
         const desc = document.createElement('p');
         desc.className = 'triage-hint';
         desc.textContent =
-          'Get step-by-step guidance filling out this IRPF, tailored to your selected research category, from the ' +
-          'SP IRB Pair Assistant.';
+          'Get step-by-step guidance filling out this page, tailored to your selected research category, from the ' +
+          'SP IRB Pair Assistant — trained on relevant IRB knowledge, fine-tuned from past cases, and cleared to ' +
+          'handle data classified up to Restricted.';
         guidance.appendChild(desc);
 
         const link = document.createElement('a');

@@ -223,14 +223,29 @@ function renderSubmissionsPage() {
   // still be reachable and actionable straight from this dashboard, so it's
   // merged into the same "Project Submissions" table rather than only
   // reachable via the parent IRPF's page, grouped right under its parent.
-  const submissions = groupSubmissionsByParent();
+  let submissions = groupSubmissionsByParent();
+
+  // IRB Members only see the records they've actually been assigned to
+  // review (currently, or in the past -- a record that's since moved on to
+  // a different member or to Leadership shouldn't disappear from someone
+  // who already reviewed it) -- not every submission in the system. Each
+  // record (an IRPF and its child IPAF are reviewed, and so assigned,
+  // independently) is filtered on its own; a member assigned only to the
+  // IPAF stage can end up seeing that child row without its parent IRPF
+  // above it, same as if the parent were on a different page entirely.
+  if (isIrbMember(role)) {
+    submissions = submissions.filter(
+      (record) => (record.assignedMembers || []).includes(role) || (record.votes || []).some((v) => v.voterId === role)
+    );
+  }
 
   const tbody = document.getElementById('submissions-body');
   tbody.innerHTML = '';
 
   if (submissions.length === 0) {
     const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = '<td colspan="9" class="empty-state">No project submissions yet.</td>';
+    const emptyMessage = isIrbMember(role) ? 'No project submissions assigned to you yet.' : 'No project submissions yet.';
+    emptyRow.innerHTML = `<td colspan="9" class="empty-state">${emptyMessage}</td>`;
     tbody.appendChild(emptyRow);
   }
 
@@ -389,14 +404,18 @@ function renderPcdfDashboard(role) {
     window.location.href = 'pcdf.html';
   });
 
-  const submissions = sortByRefNumber(getSubmissionsByType('PCDF'), 'PCDF');
+  // PCDF has no IRB Member review stage at all, so a member is never
+  // assigned to one -- consistent with the Project Submissions table
+  // above, they see none of them here either.
+  const submissions = isIrbMember(role) ? [] : sortByRefNumber(getSubmissionsByType('PCDF'), 'PCDF');
 
   const tbody = document.getElementById('pcdf-submissions-body');
   tbody.innerHTML = '';
 
   if (submissions.length === 0) {
     const emptyRow = document.createElement('tr');
-    emptyRow.innerHTML = '<td colspan="7" class="empty-state">No PCDF submissions yet.</td>';
+    const emptyMessage = isIrbMember(role) ? 'PCDF has no IRB Member review stage.' : 'No PCDF submissions yet.';
+    emptyRow.innerHTML = `<td colspan="7" class="empty-state">${emptyMessage}</td>`;
     tbody.appendChild(emptyRow);
   }
 

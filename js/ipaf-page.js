@@ -99,7 +99,7 @@ function renderActivityLog(record, role) {
   // -- so their identity is generalized wherever it'd otherwise show here.
   const blindIdentity = limitedVisibility;
 
-  [...entries].reverse().forEach((entry) => {
+  entries.forEach((entry) => {
     const li = document.createElement('li');
 
     const meta = document.createElement('div');

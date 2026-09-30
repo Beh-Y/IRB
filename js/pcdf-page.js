@@ -77,7 +77,7 @@ function renderActivityLog(record, role) {
   // this stays consistent with the IRPF/IPAF activity logs regardless.
   const blindIdentity = limitedVisibility;
 
-  [...entries].reverse().forEach((entry) => {
+  entries.forEach((entry) => {
     const li = document.createElement('li');
 
     const meta = document.createElement('div');

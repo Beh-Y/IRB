@@ -45,6 +45,29 @@ function buildCategoryGuidanceBox() {
   return { guidance, link };
 }
 
+// Shown just below the "Reviewer Feedback" panel once the PI gets a form
+// back for amendments -- the in-form guidance box (next to Category of
+// Research on the IRPF, in Project Details on the IPAF) only appears while
+// first drafting, so this is where the PI sees it while actually responding
+// to feedback, without needing to scroll into the form to find it again.
+function renderPiCategoryGuidancePanel(record, role) {
+  const container = document.getElementById('pi-category-guidance-panel');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const url = role === 'pi' && record.status === 'for_revision' ? CATEGORY_PAIR_ASSISTANT_LINKS[record.data.categoryOfResearch] : null;
+  if (!url) {
+    container.hidden = true;
+    return;
+  }
+
+  const { guidance, link } = buildCategoryGuidanceBox();
+  link.href = url;
+  guidance.hidden = false;
+  container.appendChild(guidance);
+  container.hidden = false;
+}
+
 function countWords(str) {
   return (str || '').trim().split(/\s+/).filter(Boolean).length;
 }

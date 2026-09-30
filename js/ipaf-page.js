@@ -344,6 +344,7 @@ function initIpafPage() {
   controller.mount(document.getElementById('ipaf-form-container'));
   renderActivityLog(record, role);
   renderCommentsPanel(controller);
+  renderPiCategoryGuidancePanel(record, role);
   renderVotingSummary(controller);
   renderLeadershipSummary(controller);
   renderRouteCheckboxes('triage-route-checkboxes', record.assignedMembers);

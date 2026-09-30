@@ -650,9 +650,12 @@ class IrpfFormController {
     });
 
     if (this.categoryGuidanceEls) {
-      // Guidance for filling out the form only makes sense while the PI can
-      // still edit it -- not for reviewers/other roles viewing it later.
-      const url = this.isEditableByPi() ? CATEGORY_PAIR_ASSISTANT_LINKS[data.categoryOfResearch] : null;
+      // Guidance for filling out the form only makes sense while the PI is
+      // first drafting it -- once it's returned for amendments, the same box
+      // already appears at the top of the page next to the reviewer feedback
+      // (renderPiCategoryGuidancePanel), so it isn't repeated down here too.
+      const url =
+        this.currentRole === 'pi' && this.record.status === 'draft' ? CATEGORY_PAIR_ASSISTANT_LINKS[data.categoryOfResearch] : null;
       this.categoryGuidanceEls.guidance.hidden = !url;
       if (url) this.categoryGuidanceEls.link.href = url;
     }

@@ -33,20 +33,6 @@ function loadOrCreateRecord() {
   return getSubmission(id) || null;
 }
 
-/* Real EmailJS test notification (see js/email-notify.js) -- PCDF only has
- * one "now pending on someone else" transition (Submit, which routes to
- * the S/D Director; there's no Secretariat/Member/Leadership stage and no
- * for_revision status to resubmit from). */
-function notifySubmitted(record) {
-  sendEmailNotification({
-    subject: `${record.formType} ${record.data.refNumber}: submitted`,
-    message: "Submitted and now pending the S/D Director's approval.",
-    formType: record.formType,
-    refNumber: record.data.refNumber,
-    formLink: `${window.location.origin}${window.location.pathname}?id=${record.id}`,
-  });
-}
-
 function showBanner(message, type) {
   const banner = document.getElementById('status-banner');
   banner.textContent = message;
@@ -197,7 +183,6 @@ function initPcdfPage() {
       showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
       return;
     }
-    notifySubmitted(record);
     goToDashboardWithMessage(
       `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'

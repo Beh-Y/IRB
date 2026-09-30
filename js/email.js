@@ -36,17 +36,41 @@ function clearEmailOutbox() {
   writeJSON(EMAIL_OUTBOX_STORAGE_KEY, []);
 }
 
+/* A link back to a record's own form page, built by swapping the current
+ * page's filename for the record's -- works regardless of which page this
+ * runs from (a form page itself, the submissions list, ...). */
+function emailFormLink(record) {
+  const dir = window.location.pathname.replace(/[^/]*$/, '');
+  return `${window.location.origin}${dir}${record.formType.toLowerCase()}.html?id=${record.id}`;
+}
+
 /* Decides who gets notified for a given history entry, and queues it.
  * Called once from saveSubmission() right after every state change, so
  * every action that changes a record's status fires its email from the
  * same single place -- one list to extend rather than a call bolted onto
- * each of the ~15 controller methods that call saveSubmission(). */
+ * each of the ~15 controller methods that call saveSubmission(). Also
+ * fires the matching real EmailJS test notification (see
+ * js/email-notify.js) for every one of these, guarded since not every
+ * page that can reach this loads email-notify.js -- so real email now
+ * covers the same full set of actions the simulated Outbox always has,
+ * not just a narrower "prove the pipe works" subset. */
 function notifyByEmail(record, historyEntry) {
   if (!historyEntry) return;
 
   const formLabel = record.formType;
   const ref = record.data.refNumber || record.data.projectTitle || `this ${formLabel}`;
-  const send = (toRoleId, subject, body) => queueEmail(toRoleId, subject, body, { recordId: record.id, formType: record.formType, action: historyEntry.action });
+  const send = (toRoleId, subject, body) => {
+    queueEmail(toRoleId, subject, body, { recordId: record.id, formType: record.formType, action: historyEntry.action });
+    if (typeof sendEmailNotification === 'function') {
+      sendEmailNotification({
+        subject,
+        message: body,
+        formType: record.formType,
+        refNumber: record.data.refNumber,
+        formLink: emailFormLink(record),
+      });
+    }
+  };
 
   switch (historyEntry.action) {
     case 'submit':
@@ -195,21 +219,16 @@ function sendManualReminder(record, requestingRoleId) {
   );
 
   // Also fires one real EmailJS test notification (see js/email-notify.js),
-  // same as the automatic Submit/Route/Return triggers -- guarded since
-  // this can be called from a page (e.g. submissions.html's "Remind" link)
-  // that doesn't load email-notify.js. Unlike currentFormLink in the
-  // *-page.js files (which is already sitting on the record's own page),
-  // this builds the link from scratch -- the current page here could just
-  // as easily be the submissions list -- by swapping out the current
-  // filename for the record's own form page.
+  // same as every automatic trigger above -- guarded since this can be
+  // called from a page (e.g. submissions.html's "Remind" link) that
+  // doesn't load email-notify.js.
   if (typeof sendEmailNotification === 'function') {
-    const dir = window.location.pathname.replace(/[^/]*$/, '');
     sendEmailNotification({
       subject: `Reminder: ${formLabel} ${ref} needs your action`,
       message: `Manual reminder from the IRB Secretariat -- ${formLabel} (${ref}) is awaiting your action.`,
       formType: formLabel,
       refNumber: record.data.refNumber,
-      formLink: `${window.location.origin}${dir}${formLabel.toLowerCase()}.html?id=${record.id}`,
+      formLink: emailFormLink(record),
     });
   }
 

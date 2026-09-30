@@ -341,7 +341,8 @@ function renderLeadershipSummary(controller) {
   const tally = controller.leadershipTally();
   const chips = [
     { text: `${tally.total} of ${tally.leadershipTotal} reviewed`, cls: '' },
-    { text: `${tally.approveCount} Approve`, cls: 'tally-chip--approve' },
+    { text: `${tally.approveCount} Approve for Exemption`, cls: 'tally-chip--approve' },
+    { text: `${tally.ipafRequiredCount} IPAF Required`, cls: '' },
     { text: `${tally.returnCount} Return`, cls: 'tally-chip--return' },
     { text: `${tally.routeToSecretariatCount} Route to Secretariat`, cls: '' },
   ];
@@ -390,7 +391,7 @@ function renderCollateHint(controller) {
   const tally = controller.leadershipTally();
   hint.textContent =
     `${tally.total} of ${tally.leadershipTotal} IRB leader(s) have reviewed this IRPF so far: ` +
-    `${tally.approveCount} Approve, ${tally.returnCount} Return. ` +
+    `${tally.approveCount} Approve for Exemption, ${tally.ipafRequiredCount} IPAF Required, ${tally.returnCount} Return. ` +
     'Choose the final outcome below, or wait for the rest if you prefer.';
 }
 

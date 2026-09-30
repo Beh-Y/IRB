@@ -87,7 +87,8 @@ class IrpfFormController {
     return {
       total: approvals.length,
       leadershipTotal: IRB_LEADERSHIP_IDS.length,
-      approveCount: approvals.filter((a) => a.decision === 'Approve').length,
+      approveCount: approvals.filter((a) => a.decision === 'Approve for Exemption').length,
+      ipafRequiredCount: approvals.filter((a) => a.decision === 'IPAF Required').length,
       returnCount: approvals.filter((a) => a.decision === 'Return').length,
       routeToSecretariatCount: approvals.filter((a) => a.decision === 'Route to Secretariat').length,
     };
@@ -299,14 +300,18 @@ class IrpfFormController {
     return { ok: true };
   }
 
-  /* Same three decisions as castVote -- see its comment for what 'Route to
-   * Secretariat' means and why it's handled the way it is. */
+  /* Leadership recommends one of 'Approve for Exemption', 'IPAF Required',
+   * 'Return', or 'Route to Secretariat' -- the last two are the same
+   * mechanism as castVote's Return/Route to Secretariat (see its comment)
+   * just with an extra recommendation in between. Whichever of the first two
+   * they pick is only a recommendation: the Secretariat still records the
+   * actual final outcome via the collate panel. */
   castLeadershipVote(decision, comment) {
     if (!isIrbLeadership(this.currentRole)) {
       return { ok: false, error: 'This IRPF was not routed to you for review.' };
     }
     if (!decision) {
-      return { ok: false, error: 'Select Approve or Return.' };
+      return { ok: false, error: 'Select Approve for Exemption, IPAF Required, or Return for Amendments.' };
     }
     if ((decision === 'Return' || decision === 'Route to Secretariat') && !(comment || '').trim()) {
       return {

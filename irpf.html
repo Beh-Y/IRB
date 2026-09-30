@@ -111,9 +111,13 @@
 
     <div id="leadership-approval-panel" class="triage-panel" hidden>
       <h2>Submit Your Review</h2>
-      <p class="triage-hint">Reviewing as <strong id="leadership-identity"></strong></p>
+      <p class="triage-hint">
+        Reviewing as <strong id="leadership-identity"></strong>. Your recommendation is passed to the Secretariat, who
+        records the final outcome once enough leaders have weighed in.
+      </p>
       <div class="radio-group vote-decision-group">
-        <label class="radio-option"><input type="radio" name="leadershipDecision" value="Approve" /> Approve</label>
+        <label class="radio-option"><input type="radio" name="leadershipDecision" value="Approve for Exemption" /> Approve for Exemption</label>
+        <label class="radio-option"><input type="radio" name="leadershipDecision" value="IPAF Required" /> IPAF Required</label>
         <label class="radio-option"><input type="radio" name="leadershipDecision" value="Return" /> Return for Amendments</label>
       </div>
       <label for="leadership-comment">Comment <span class="triage-hint-inline">(required for Return or Route to Secretariat)</span></label>

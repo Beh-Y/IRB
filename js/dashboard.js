@@ -152,6 +152,11 @@ function needsActionFromCurrentRole(record, role) {
     // step after approval -- an IRPF headed for a full IPAF instead has no
     // acknowledgement of its own (that happens on the child IPAF).
     if (record.status === 'approved' && !record.acknowledged) return true;
+    // Only while the child IPAF doesn't exist yet -- the PI still needs to
+    // create it. Once it does, the actionable item is that child IPAF's own
+    // draft, already covered above; this parent IRPF row would otherwise
+    // linger as "needs action" forever.
+    if (record.status === 'to_create_ipaf' && !record.childIpafId) return true;
     return false;
   }
   return false;

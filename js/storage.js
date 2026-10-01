@@ -42,6 +42,42 @@ function migrateLegacyIpafStatus(records) {
   return changed;
 }
 
+/* IPAFs created before IPAF numbers started mirroring their parent IRPF's
+ * (see refnumber.js) carry a reference number drawn from IPAF's own
+ * now-unused counter -- unrelated to the parent's number, sometimes not
+ * even in the same MM-YYYY period. Realign every already-numbered IPAF to
+ * its parent's actual reference number + category suffix, once, in place.
+ * (Needs IPAF_REF_SUFFIX_BY_CATEGORY, declared just below -- both
+ * functions run together from getAllSubmissions, after the whole file has
+ * loaded, so the forward reference is fine.) */
+function migrateIpafReferenceNumbers(records) {
+  let changed = false;
+  const byId = new Map(records.map((r) => [r.id, r]));
+  records.forEach((record) => {
+    if (record.formType !== 'IPAF' || !record.data.refNumber) return;
+    const parent = byId.get(record.parentIrpfId);
+    const parentRef = parent && parent.data && parent.data.refNumber;
+    if (!parentRef) return;
+    const suffix = IPAF_REF_SUFFIX_BY_CATEGORY[record.data.categoryOfResearch] || 'PAOTH';
+    const expected = `${parentRef}-${suffix}`;
+    if (record.data.refNumber === expected && record.data.irpfReferenceNumber === parentRef) return;
+    const oldRef = record.data.refNumber;
+    record.data.refNumber = expected;
+    record.data.irpfReferenceNumber = parentRef;
+    record.updatedAt = new Date().toISOString();
+    record.history = record.history || [];
+    record.history.push({
+      action: 'refnumber_corrected',
+      actor: 'system',
+      status: record.status,
+      timestamp: record.updatedAt,
+      note: `Reference number realigned to mirror parent IRPF (${oldRef} → ${expected}).`,
+    });
+    changed = true;
+  });
+  return changed;
+}
+
 /* Self-contained duplicates of refnumber.js's period-key convention and
  * IPAF suffix table -- this file loads before refnumber.js on the pages
  * that have both, and isn't loaded at all on some others (dashboard,
@@ -161,6 +197,7 @@ function dedupeReferenceNumbers(records) {
 function getAllSubmissions() {
   const records = readJSON(STORAGE_KEYS.SUBMISSIONS, []);
   let changed = migrateLegacyIpafStatus(records);
+  if (migrateIpafReferenceNumbers(records)) changed = true;
   reconcileRefCounters(records);
   if (dedupeReferenceNumbers(records)) changed = true;
   if (changed) {

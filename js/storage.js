@@ -90,7 +90,13 @@ function takeNextRefSequence(namespace, mm, yyyy) {
   return String(nextSeq).padStart(3, '0');
 }
 
-function assignFreshReferenceNumber(record) {
+/* `disambiguator`, when given, is appended as a plain numeric suffix --
+ * only IPAF needs it. An IPAF's number mirrors its parent IRPF's (plus a
+ * category suffix) rather than drawing from its own counter, so simply
+ * recomputing it would reproduce the very duplicate being corrected; the
+ * disambiguator breaks that tie in the (practically impossible, since one
+ * IRPF only ever has one child IPAF) case of two IPAFs colliding. */
+function assignFreshReferenceNumber(record, disambiguator) {
   const date = record.createdAt ? new Date(record.createdAt) : new Date();
   const mm = String(date.getMonth() + 1).padStart(2, '0');
   const yyyy = String(date.getFullYear());
@@ -100,7 +106,10 @@ function assignFreshReferenceNumber(record) {
   }
   if (record.formType === 'IPAF') {
     const suffix = IPAF_REF_SUFFIX_BY_CATEGORY[record.data.categoryOfResearch] || 'PAOTH';
-    return `IRB-${mm}-${yyyy}-${takeNextRefSequence('IPAF', mm, yyyy)}-${suffix}`;
+    const base = record.data.irpfReferenceNumber
+      ? `${record.data.irpfReferenceNumber}-${suffix}`
+      : `IRB-${mm}-${yyyy}-${takeNextRefSequence('IPAF', mm, yyyy)}-${suffix}`;
+    return disambiguator ? `${base}-${disambiguator}` : base;
   }
   if (record.formType === 'PCDF') {
     return `PCDF-${mm}-${yyyy}-${takeNextRefSequence('PCDF', mm, yyyy)}`;
@@ -128,9 +137,9 @@ function dedupeReferenceNumbers(records) {
   byKey.forEach((group) => {
     if (group.length < 2) return;
     const sorted = [...group].sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
-    sorted.slice(1).forEach((record) => {
+    sorted.slice(1).forEach((record, idx) => {
       const oldRef = record.data.refNumber;
-      const newRef = assignFreshReferenceNumber(record);
+      const newRef = assignFreshReferenceNumber(record, idx + 2);
       if (!newRef) return;
       record.data.refNumber = newRef;
       record.updatedAt = new Date().toISOString();

@@ -983,16 +983,15 @@ class IpafFormController {
     });
   }
 
-  /* Reference numbers are assigned on first Submit, not on Save -- otherwise
-   * every draft saved but never submitted would still burn a number from the
-   * shared per-period counter, making submitted numbers look like they
-   * "reset" or skip ahead. (createdAt is already set at creation time, via
-   * the parent IRPF's "Create IPAF Form" action, so there's no separate
-   * ensureCreated step here.) */
+  /* Reference numbers are assigned on first Submit, not on Save -- matching
+   * the IRPF's own timing, even though the IPAF doesn't burn a counter of
+   * its own (it mirrors the parent IRPF's number, carried over at creation
+   * as irpfReferenceNumber, plus a category suffix) -- so a draft that's
+   * saved but never submitted doesn't show a reference number prematurely. */
   assignRefNumber() {
     if (!this.record.data.refNumber) {
       this.record.data.refNumber = generateIPAFReferenceNumber(
-        new Date(this.record.createdAt || Date.now()),
+        this.record.data.irpfReferenceNumber,
         this.record.data.categoryOfResearch
       );
       const displayEl = this.fieldEls.refNumber && this.fieldEls.refNumber.input;

@@ -1,0 +1,96 @@
+/* Role definitions and the client-side "Preview as" role switcher state. */
+
+/* `email` is a synthetic placeholder address for each role -- there's no
+ * real per-user identity in this app (each role is a shared persona, not a
+ * signed-in person), so these stand in for "wherever the real notification
+ * would go" in a real deployment. getRoleEmail() below currently ignores
+ * them, though, and always returns the one real test inbox connected in
+ * EmailJS (see js/email-notify.js) -- that mechanism already sends every
+ * real notification to that single address regardless of role, so the
+ * simulated Outbox (js/email.js) matches that same "where does this
+ * actually go right now" reality rather than implying per-role delivery
+ * the app doesn't yet have. Swap getRoleEmail back to reading `email` below
+ * once there are real per-role addresses to send to. */
+const ROLES = [
+  { id: 'pi', label: 'Principal Investigator (PI)', group: 'SP Staff', email: 'pi@sp.edu.sg' },
+  { id: 'sd-director', label: 'School/Department Director', group: 'SP Staff', email: 'sd-director@sp.edu.sg' },
+  { id: 'poc', label: 'Point of Contact (POC)', group: 'SP Staff', email: 'poc@sp.edu.sg' },
+  { id: 'irb-admin-edu', label: 'IRB Admin – EDU Secretariat', group: 'SP Staff', email: 'irb-secretariat-edu@sp.edu.sg' },
+  { id: 'irb-admin-tie', label: 'IRB Admin – TIE Secretariat', group: 'SP Staff', email: 'irb-secretariat-tie@sp.edu.sg' },
+  { id: 'irb-member-1', label: 'IRB Member 1', group: 'SP Staff', email: 'irb-member1@sp.edu.sg' },
+  { id: 'irb-member-2', label: 'IRB Member 2', group: 'SP Staff', email: 'irb-member2@sp.edu.sg' },
+  { id: 'irb-member-3', label: 'IRB Member 3', group: 'SP Staff', email: 'irb-member3@sp.edu.sg' },
+  { id: 'irb-co-chairman', label: 'IRB Co-Chairman', group: 'SP Staff', email: 'irb-co-chairman@sp.edu.sg' },
+  { id: 'irb-chairman', label: 'IRB Chairman', group: 'SP Staff', email: 'irb-chairman@sp.edu.sg' },
+  { id: 'system-admin', label: 'INDT / System Admin', group: 'SP Staff', email: 'indt-admin@sp.edu.sg' },
+];
+
+/* The selectable IRB Member personas, in the order the Secretariat assigns them. */
+const IRB_MEMBER_IDS = ['irb-member-1', 'irb-member-2', 'irb-member-3'];
+
+/* Fixed IRB leadership roles who sign off after unanimous member approval. */
+const IRB_LEADERSHIP_IDS = ['irb-co-chairman', 'irb-chairman'];
+
+const ROLES_STORAGE_KEY = 'irb_current_role';
+
+function getCurrentRole() {
+  return localStorage.getItem(ROLES_STORAGE_KEY) || ROLES[0].id;
+}
+
+function setCurrentRole(roleId) {
+  localStorage.setItem(ROLES_STORAGE_KEY, roleId);
+}
+
+function getRoleLabel(roleId) {
+  const role = ROLES.find((r) => r.id === roleId);
+  return role ? role.label : roleId;
+}
+
+const TEST_INBOX_EMAIL = 'spirbtest@gmail.com';
+
+function getRoleEmail(roleId) {
+  return TEST_INBOX_EMAIL;
+}
+
+function isSecretariat(roleId) {
+  return roleId === 'irb-admin-edu' || roleId === 'irb-admin-tie';
+}
+
+function isIrbMember(roleId) {
+  return IRB_MEMBER_IDS.includes(roleId);
+}
+
+function isIrbLeadership(roleId) {
+  return IRB_LEADERSHIP_IDS.includes(roleId);
+}
+
+/* EDU category routes to the EDU secretariat; Biomedical/Others route to TIE. */
+function secretariatRoleForCategory(category) {
+  return category === 'Educational Research' ? 'irb-admin-edu' : 'irb-admin-tie';
+}
+
+/* The generic term to show in place of a specific IRB Member/Secretariat/
+ * Leadership identity, for the two roles (PI, S/D Director) meant to stay
+ * blind to exactly who reviewed -- not just whether they did. Any other
+ * role (Director, the PI themselves, system) is identified normally. */
+function blindedRoleLabel(roleId) {
+  if (isIrbMember(roleId)) return 'an IRB Member';
+  if (isSecretariat(roleId)) return 'the IRB Secretariat';
+  if (isIrbLeadership(roleId)) return 'IRB Leadership';
+  return getRoleLabel(roleId);
+}
+
+/* Scrubs any IRB Member/Secretariat/Leadership role label baked into a
+ * free-text note (e.g. "...routed back to IRB Member 3 for review.") down
+ * to the same generic term blindedRoleLabel uses elsewhere -- for the
+ * Activity Log, which stores its detail as plain prose rather than
+ * structured fields, so there's no other way to keep the PI/S-D Director
+ * blind to reviewer identity there. Driven off the real role list rather
+ * than a fixed string set, so it keeps working if roles are ever renamed. */
+function scrubStaffIdentities(text) {
+  if (!text) return text;
+  return ROLES.filter((r) => isIrbMember(r.id) || isSecretariat(r.id) || isIrbLeadership(r.id)).reduce(
+    (scrubbed, r) => scrubbed.split(r.label).join(blindedRoleLabel(r.id)),
+    text
+  );
+}

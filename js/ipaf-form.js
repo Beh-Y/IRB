@@ -419,6 +419,7 @@ class IpafFormController {
       return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
     }
     this.record.status = 'under_review';
+    recordEverAssignedMembers(this.record, assigned);
     this.record.assignedMembers = assigned;
     this.record.votes = [];
     this.record.leadershipApprovals = [];
@@ -446,6 +447,7 @@ class IpafFormController {
     if (assigned.length === 0) {
       return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
     }
+    recordEverAssignedMembers(this.record, assigned);
     this.record.assignedMembers = assigned;
     this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
     this.record.status = 'under_review';
@@ -472,6 +474,7 @@ class IpafFormController {
     if (assigned.length === 0) {
       return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
     }
+    recordEverAssignedMembers(this.record, assigned);
     this.record.assignedMembers = assigned;
     this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
     this.record.leadershipApprovals = [];

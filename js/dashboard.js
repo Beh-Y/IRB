@@ -243,16 +243,21 @@ function renderSubmissionsPage() {
   let submissions = groupSubmissionsByParent();
 
   // IRB Members only see the records they've actually been assigned to
-  // review (currently, or in the past -- a record that's since moved on to
-  // a different member or to Leadership shouldn't disappear from someone
-  // who already reviewed it) -- not every submission in the system. Each
-  // record (an IRPF and its child IPAF are reviewed, and so assigned,
-  // independently) is filtered on its own; a member assigned only to the
-  // IPAF stage can end up seeing that child row without its parent IRPF
-  // above it, same as if the parent were on a different page entirely.
+  // review (currently, or in the past -- a record that's since been
+  // re-routed to a different member or to Leadership shouldn't disappear
+  // from someone who was ever assigned to it, whether or not they got to
+  // vote before being dropped from a later routing round -- see
+  // everAssignedMembers in form-utils.js/recordEverAssignedMembers) -- not
+  // every submission in the system. Each record (an IRPF and its child
+  // IPAF are reviewed, and so assigned, independently) is filtered on its
+  // own; a member assigned only to the IPAF stage can end up seeing that
+  // child row without its parent IRPF above it, same as if the parent were
+  // on a different page entirely.
   if (isIrbMember(role)) {
     submissions = submissions.filter(
-      (record) => (record.assignedMembers || []).includes(role) || (record.votes || []).some((v) => v.voterId === role)
+      (record) =>
+        (record.everAssignedMembers || record.assignedMembers || []).includes(role) ||
+        (record.votes || []).some((v) => v.voterId === role)
     );
   }
 

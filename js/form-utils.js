@@ -9,6 +9,26 @@ function flattenFields(schema) {
   return schema.flatMap((section) => section.fields);
 }
 
+/* Grows a record's permanent "ever assigned" IRB Member roster -- unlike
+ * assignedMembers itself, which every re-routing call (routeToMembersFor-
+ * Review/FromUnderReview/FromCollate, in irpf-form.js and ipaf-form.js)
+ * replaces outright with just that round's roster, this union only ever
+ * grows. A member dropped from a later routing round keeps their place in
+ * it, so the Submissions-list filter (dashboard.js) that uses this for
+ * visibility doesn't lose them entirely -- assignedMembers alone still
+ * governs who can actually vote right now, unchanged.
+ *
+ * Must be called BEFORE record.assignedMembers is overwritten with the new
+ * roster -- it folds in the outgoing current roster (about to be replaced)
+ * as well as the incoming one, so the member(s) being dropped this round
+ * are captured too, not just whoever happens to already be in
+ * everAssignedMembers from an earlier call. */
+function recordEverAssignedMembers(record, assigned) {
+  record.everAssignedMembers = Array.from(
+    new Set([...(record.everAssignedMembers || []), ...(record.assignedMembers || []), ...assigned])
+  );
+}
+
 // Pair (pair.gov.sg) assistants pre-loaded with guidance for filling out the
 // IRPF/IPAF, split by research category since the two assistants are tuned
 // to different sections/requirements. Shared by irpf-form.js (where the PI

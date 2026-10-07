@@ -48,20 +48,43 @@ function getStatusBadgeClass(status) {
   return STATUS_BADGE_CLASSES[status] || 'status-badge';
 }
 
-/* An assigned IRB Member/Leadership reviewer who hasn't voted yet can still
- * cast their vote even after the record has already flipped to
- * 'for_revision' -- from a DIFFERENT member's own "Return" (which bypasses
- * the Secretariat and goes straight to the PI), or the Secretariat's own
- * early return -- see isUnderReviewVotingOpenToMember/isPendingLeadership-
- * Approval in irpf-form.js/ipaf-form.js, which keep their vote panel open
- * in exactly this case. Showing them the record's real "For Revision"
- * status reads as if their review is no longer wanted; this resolves the
- * status they should see instead, so it still reflects their own open task
- * rather than what happened on a different reviewer's vote. Only
- * 'for_revision' is overridden (not every status a late vote still counts
- * under) -- once the record reaches a true outcome (approved, routed to
- * leadership, etc.) that status is accurate and worth showing as-is. */
+// Same roles the pipeline stepper and Activity Log already keep to a
+// limited view (see PIPELINE_LIMITED_VISIBILITY_ROLES in
+// pipeline-stepper.js, and the *_LIMITED_VISIBILITY_ROLES constants in
+// irpf-page.js/ipaf-page.js/pcdf-page.js) -- a self-contained duplicate
+// since this file loads before pipeline-stepper.js, same reasoning as
+// IPAF_REF_SUFFIX_BY_CATEGORY in storage.js.
+const STATUS_LIMITED_VISIBILITY_ROLES = ['pi', 'sd-director', 'poc'];
+
+/* Resolves the status a given viewer should actually see, which can differ
+ * from the record's real status in two cases:
+ *
+ * 1. PI/S-D Director/POC never see the review broken into Members vs
+ *    Leadership -- the pipeline stepper already collapses both into one
+ *    "Review" stage for them. "Pending Chairman Approval" names a specific
+ *    reviewer they're meant to stay blind to (same principle as
+ *    blindedRoleLabel in roles.js), so it resolves to the same generic
+ *    "Under Review" instead.
+ *
+ * 2. An assigned IRB Member/Leadership reviewer who hasn't voted yet can
+ *    still cast their vote even after the record has already flipped to
+ *    'for_revision' -- from a DIFFERENT member's own "Return" (which
+ *    bypasses the Secretariat and goes straight to the PI), or the
+ *    Secretariat's own early return -- see isUnderReviewVotingOpenToMember/
+ *    isPendingLeadershipApproval in irpf-form.js/ipaf-form.js, which keep
+ *    their vote panel open in exactly this case. Showing them the record's
+ *    real "For Revision" status reads as if their review is no longer
+ *    wanted; this resolves the status they should see instead, so it still
+ *    reflects their own open task rather than what happened on a different
+ *    reviewer's vote. Only 'for_revision' is overridden here (not every
+ *    status a late vote still counts under) -- once the record reaches a
+ *    true outcome (approved, routed to leadership, etc.) that status is
+ *    accurate and worth showing as-is. */
 function getStatusForViewer(record, role) {
+  if (STATUS_LIMITED_VISIBILITY_ROLES.includes(role) && record.status === 'pending_leadership_approval') {
+    return 'under_review';
+  }
+
   if (record.status !== 'for_revision') return record.status;
 
   const votes = record.votes || [];

@@ -47,3 +47,37 @@ const STATUS_BADGE_CLASSES = {
 function getStatusBadgeClass(status) {
   return STATUS_BADGE_CLASSES[status] || 'status-badge';
 }
+
+/* An assigned IRB Member/Leadership reviewer who hasn't voted yet can still
+ * cast their vote even after the record has already flipped to
+ * 'for_revision' -- from a DIFFERENT member's own "Return" (which bypasses
+ * the Secretariat and goes straight to the PI), or the Secretariat's own
+ * early return -- see isUnderReviewVotingOpenToMember/isPendingLeadership-
+ * Approval in irpf-form.js/ipaf-form.js, which keep their vote panel open
+ * in exactly this case. Showing them the record's real "For Revision"
+ * status reads as if their review is no longer wanted; this resolves the
+ * status they should see instead, so it still reflects their own open task
+ * rather than what happened on a different reviewer's vote. Only
+ * 'for_revision' is overridden (not every status a late vote still counts
+ * under) -- once the record reaches a true outcome (approved, routed to
+ * leadership, etc.) that status is accurate and worth showing as-is. */
+function getStatusForViewer(record, role) {
+  if (record.status !== 'for_revision') return record.status;
+
+  const votes = record.votes || [];
+  if (
+    isIrbMember(role) &&
+    (record.assignedMembers || []).includes(role) &&
+    votes.length > 0 &&
+    !votes.some((v) => v.voterId === role)
+  ) {
+    return 'under_review';
+  }
+
+  const leadershipApprovals = record.leadershipApprovals || [];
+  if (isIrbLeadership(role) && leadershipApprovals.length > 0 && !leadershipApprovals.some((a) => a.approverId === role)) {
+    return 'pending_leadership_approval';
+  }
+
+  return record.status;
+}

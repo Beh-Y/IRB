@@ -290,7 +290,8 @@ function renderSubmissionsPage() {
     endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
 
     const statusCell = document.createElement('td');
-    statusCell.appendChild(buildStatusBadge(record.status, getStatusLabel(record.status, record.formType)));
+    const viewerStatus = getStatusForViewer(record, role);
+    statusCell.appendChild(buildStatusBadge(viewerStatus, getStatusLabel(viewerStatus, record.formType)));
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';
@@ -386,14 +387,18 @@ function renderPendingActionTable(role) {
     // label (used everywhere else since it names the specific milestone)
     // reads oddly on the Co-Chairman's own to-do list -- it's just as much
     // their approval pending as the Chairman's -- so both leaders see the
-    // neutral "Pending Approval" here instead.
+    // neutral "Pending Approval" here instead. getStatusForViewer handles a
+    // third case first: a still-open review/approval task for this role
+    // that the record's real status (for_revision, from a DIFFERENT
+    // reviewer's own Return) would otherwise misreport as closed.
+    const viewerStatus = getStatusForViewer(record, role);
     const statusLabel =
-      role === 'sd-director' && record.status === 'pending_director_approval'
+      role === 'sd-director' && viewerStatus === 'pending_director_approval'
         ? 'Pending Approval'
-        : isIrbLeadership(role) && record.status === 'pending_leadership_approval'
+        : isIrbLeadership(role) && viewerStatus === 'pending_leadership_approval'
           ? 'Pending Approval'
-          : getStatusLabel(record.status, record.formType);
-    statusCell.appendChild(buildStatusBadge(record.status, statusLabel));
+          : getStatusLabel(viewerStatus, record.formType);
+    statusCell.appendChild(buildStatusBadge(viewerStatus, statusLabel));
 
     const updatedCell = document.createElement('td');
     updatedCell.textContent = record.updatedAt ? new Date(record.updatedAt).toLocaleString() : '—';

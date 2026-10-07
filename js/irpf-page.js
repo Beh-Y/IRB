@@ -416,8 +416,9 @@ function initIrpfPage() {
   const controller = new IrpfFormController(record, role);
 
   const statusBadge = document.getElementById('irpf-status-badge');
-  statusBadge.textContent = getStatusLabel(record.status);
-  statusBadge.className = `status-badge ${getStatusBadgeClass(record.status)}`;
+  const viewerStatus = getStatusForViewer(record, role);
+  statusBadge.textContent = getStatusLabel(viewerStatus);
+  statusBadge.className = `status-badge ${getStatusBadgeClass(viewerStatus)}`;
   renderPipelineStepper(document.getElementById('pipeline-stepper'), record, role);
   controller.mount(document.getElementById('irpf-form-container'));
   renderActivityLog(record, role);

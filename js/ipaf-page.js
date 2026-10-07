@@ -336,8 +336,9 @@ function initIpafPage() {
   const controller = new IpafFormController(record, role);
 
   const statusBadge = document.getElementById('ipaf-status-badge');
-  statusBadge.textContent = getStatusLabel(record.status, 'IPAF');
-  statusBadge.className = `status-badge ${getStatusBadgeClass(record.status)}`;
+  const viewerStatus = getStatusForViewer(record, role);
+  statusBadge.textContent = getStatusLabel(viewerStatus, 'IPAF');
+  statusBadge.className = `status-badge ${getStatusBadgeClass(viewerStatus)}`;
   renderPipelineStepper(document.getElementById('pipeline-stepper'), record, role);
   document.getElementById('link-back-to-irpf').href = `irpf.html?id=${record.parentIrpfId}`;
   controller.mount(document.getElementById('ipaf-form-container'));

@@ -160,12 +160,11 @@ function renderCommentsPanel(controller) {
 
   if (role === 'pi') {
     heading.textContent = 'Reviewer Feedback';
-    // "Route to Secretariat" is a reviewer deferring the decision to the
-    // Secretariat, not feedback on the research itself -- leave it out of
-    // what the PI sees so it doesn't read as an amendment request.
+    // Includes "Route to Secretariat" comments too -- the PI should see
+    // the reasoning behind every handoff, not just an Approve/Return
+    // decision.
     const entries = (controller.record.history || [])
       .filter((h) => STAFF_COMMENT_ACTIONS.includes(h.action) && h.comment && h.comment.trim())
-      .filter((h) => h.decision !== 'Route to Secretariat')
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const hasComments = renderBlindedReviewComments(list, entries);
     container.hidden = !hasComments;

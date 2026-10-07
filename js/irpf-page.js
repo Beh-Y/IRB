@@ -407,6 +407,7 @@ function initIrpfPage() {
   renderHeader('irpf');
 
   const role = getCurrentRole();
+  const limitedVisibility = IRPF_LIMITED_VISIBILITY_ROLES.includes(role);
   const record = loadOrCreateRecord();
   if (!record) {
     document.querySelector('main.page').innerHTML =
@@ -546,13 +547,30 @@ function initIrpfPage() {
   } else if (record.status === 'pending_director_approval') {
     showBanner('Awaiting S/D Director approval before this IRPF can proceed.', 'info');
   } else if (record.status === 'pending_review') {
-    showBanner(`Routed to ${getRoleLabel(record.routedTo)} for review.`, 'info');
+    // routedTo at this point names a specific Secretariat team (e.g. "IRB
+    // Admin -- EDU Secretariat") -- same blinding as everywhere else, stay
+    // generic for PI/S-D Director/POC rather than naming which team.
+    showBanner(
+      limitedVisibility ? 'Routed to the IRB Secretariat for review.' : `Routed to ${getRoleLabel(record.routedTo)} for review.`,
+      'info'
+    );
   } else if (record.status === 'for_revision') {
     showBanner('Returned for amendments. Awaiting the PI to address the comments and resubmit.', 'info');
-  } else if (record.status === 'under_review') {
-    showBanner('Routed to the IRB Member panel for review. Awaiting their feedback.', 'info');
-  } else if (record.status === 'pending_leadership_approval') {
-    showBanner('Routed to the IRB Co-Chairman and Chairman for approval. Awaiting their decision.', 'info');
+  } else if (record.status === 'under_review' || record.status === 'pending_leadership_approval') {
+    // The branch itself still keys off the record's real status (same as
+    // before, so e.g. a Secretariat viewer not routed to this record still
+    // reaches it) -- only the wording changes for PI/S-D Director/POC, to
+    // the same stage-agnostic text getStatusForViewer's "Under Review"
+    // already implies for both real stages, rather than naming "the IRB
+    // Member panel" for one and "the Co-Chairman and Chairman" for the
+    // other. Staff roles still see the real, specific stage.
+    if (limitedVisibility) {
+      showBanner('Routed for review. Awaiting the reviewer’s decision.', 'info');
+    } else if (record.status === 'under_review') {
+      showBanner('Routed to the IRB Member panel for review. Awaiting their feedback.', 'info');
+    } else {
+      showBanner('Routed to the IRB Co-Chairman and Chairman for approval. Awaiting their decision.', 'info');
+    }
   } else if (record.status === 'approved' || record.status === 'to_create_ipaf') {
     showBanner(describeFinalOutcome(record), 'success');
   } else if (record.status === 'draft') {

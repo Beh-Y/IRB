@@ -53,6 +53,21 @@ class IpafFormController {
     return this.record.assignedMembers || [];
   }
 
+  /* The full "ever assigned" roster (see recordEverAssignedMembers in
+   * form-utils.js) -- everyone ever routed into this review, not just
+   * whoever the current round narrowed it down to. Falls back to the
+   * current round for a record saved before this field existed, where the
+   * two are the same anyway. Used to decide whether review is actually
+   * complete (see castVote's auto-route to Leadership below) -- a
+   * Secretariat re-route that drops a member down to just one specified
+   * reviewer shouldn't let that one reviewer's approval alone complete a
+   * review that other, still-assigned-in-spirit members never weighed in
+   * on. */
+  getEverAssignedMembers() {
+    const ever = this.record.everAssignedMembers;
+    return ever && ever.length > 0 ? ever : this.getAssignedMembers();
+  }
+
   isAssignedMember() {
     return isIrbMember(this.currentRole) && this.getAssignedMembers().includes(this.currentRole);
   }
@@ -242,19 +257,23 @@ class IpafFormController {
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
     } else if (
-      this.getAssignedMembers().length > 0 &&
-      this.record.votes.length === this.getAssignedMembers().length &&
-      this.record.votes.every((v) => v.decision === 'Approve')
+      this.getEverAssignedMembers().length > 0 &&
+      this.getEverAssignedMembers().every((id) => this.record.votes.some((v) => v.voterId === id && v.decision === 'Approve'))
     ) {
-      /* Every assigned member has now approved -- auto-route straight to
-       * the Co-Chairman and Chairman rather than waiting for the
-       * Secretariat to do it manually. Same effect as
-       * routeToLeadershipApproval() below, just triggered by the vote
-       * that completes the panel instead of a Secretariat click -- this
-       * takes priority over the member-bypass hand-back-to-Secretariat
-       * case right below, so a bypass round that ends in full approval
-       * (not just the returning member's own) also skips straight to
-       * Leadership instead of looping through the Secretariat once more. */
+      /* Every member ever assigned has now approved -- not just whoever the
+       * current round happens to be narrowed down to (see
+       * getEverAssignedMembers) -- so auto-route straight to the
+       * Co-Chairman and Chairman rather than waiting for the Secretariat to
+       * do it manually. Same effect as routeToLeadershipApproval() below,
+       * just triggered by the vote that completes the panel instead of a
+       * Secretariat click -- this takes priority over the member-bypass
+       * hand-back-to-Secretariat case right below, so a bypass round that
+       * ends in full approval (not just the returning member's own) also
+       * skips straight to Leadership instead of looping through the
+       * Secretariat once more. A round that only needed one specified
+       * reviewer's fresh approval, with other ever-assigned members still
+       * outstanding, falls through instead -- the Secretariat can still
+       * route to Leadership manually once that's the right call. */
       const targets = IRB_LEADERSHIP_IDS;
       this.record.status = 'pending_leadership_approval';
       this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => !targets.includes(a.approverId));

@@ -138,8 +138,12 @@ function consumeFlashMessage() {
 /* Every action that changes a record's status or state redirects to the
  * dashboard on success, carrying a flash message so the user still gets
  * confirmation of what just happened. */
-function goToDashboardWithMessage(message, type) {
+/* Async so the redirect can wait on any EmailJS sends still in flight (see
+ * pendingEmailSends in email-notify.js) -- otherwise the browser cancels
+ * them mid-request the instant window.location changes. */
+async function goToDashboardWithMessage(message, type) {
   setFlashMessage(message, type || 'success');
+  if (typeof pendingEmailSends !== 'undefined') await Promise.allSettled(pendingEmailSends);
   window.location.href = 'index.html';
 }
 

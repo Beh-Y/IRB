@@ -29,6 +29,12 @@ if (typeof emailjs !== 'undefined') {
   emailjs.init(EMAILJS_PUBLIC_KEY);
 }
 
+/* Every in-flight EmailJS request, so a caller about to redirect (see
+ * goToDashboardWithMessage in form-utils.js) can await them first --
+ * without this, the browser cancels the request mid-flight when
+ * window.location changes right after Submit. */
+const pendingEmailSends = [];
+
 /* Sends one real test email via EmailJS. { form_type, ref_number,
  * form_link, message } are the template params -- use them as
  * {{form_type}}, {{ref_number}}, {{form_link}}, {{message}} placeholders
@@ -43,7 +49,7 @@ function sendEmailNotification({ subject, message, formType, refNumber, formLink
     console.error('EmailJS SDK not loaded -- notification not sent.');
     return;
   }
-  emailjs
+  const send = emailjs
     .send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
       subject,
       form_type: formType,
@@ -52,4 +58,5 @@ function sendEmailNotification({ subject, message, formType, refNumber, formLink
       message,
     })
     .catch((err) => console.error('EmailJS notification failed:', err));
+  pendingEmailSends.push(send);
 }

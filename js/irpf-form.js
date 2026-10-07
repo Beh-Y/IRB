@@ -945,7 +945,16 @@ class IrpfFormController {
    * Leadership) -- otherwise they'd linger and incorrectly block the
    * Secretariat's own under-review action panel from opening once these
    * fresh member votes come in, since that panel requires
-   * getLeadershipApprovals().length === 0. */
+   * getLeadershipApprovals().length === 0. Member votes are cleared
+   * selectively, same as routeToMembersFromUnderReview/FromCollate below --
+   * only whoever is being (re-)assigned in this call gets a clean slate.
+   * Earlier than that fix, this cleared every vote unconditionally, which
+   * silently discarded an already-assigned member's standing approval the
+   * next time the Secretariat triaged a resubmission (e.g. after their own
+   * Return, or a different member's bypass cycle), even though that member
+   * never withdrew it -- making "every assigned member approved" never
+   * actually complete once a record went through more than one triage
+   * round. */
   routeToMembersForReview(comment, memberIds) {
     const assigned = memberIds || [];
     if (assigned.length === 0) {
@@ -954,7 +963,7 @@ class IrpfFormController {
     this.record.status = 'under_review';
     recordEverAssignedMembers(this.record, assigned);
     this.record.assignedMembers = assigned;
-    this.record.votes = [];
+    this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
     this.record.leadershipApprovals = [];
     const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
     saveSubmission(this.record, {
@@ -967,9 +976,9 @@ class IrpfFormController {
   }
 
   /* Secretariat can re-route to IRB Members from the under-review action
-   * panel without discarding votes already cast -- unlike
-   * routeToMembersForReview()'s fresh review at triage, this just updates
-   * who's assigned so a straggler or an added member can weigh in. A member
+   * panel without discarding votes already cast -- same selective clearing
+   * as routeToMembersForReview() above, just updating who's assigned so a
+   * straggler or an added member can weigh in. A member
    * being (re-)assigned here always gets a clean slate, though: if they'd
    * already voted (or deferred via Route to Secretariat) in an earlier
    * round and are selected again, their stale vote would otherwise still

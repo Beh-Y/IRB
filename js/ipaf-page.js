@@ -417,9 +417,13 @@ function initIpafPage() {
       // buttons -- send it straight back to that reviewer, or loop the
       // Secretariat in instead. When it was the Secretariat's own return,
       // there's no specific reviewer to choose, so only one button shows.
+      // Labeled and styled to match the IRB Member/Leadership panels' own
+      // "Route to Secretariat" button exactly (same text, same secondary/
+      // outlined look) -- it's the same deferral action from the PI's side.
       const returningReviewer = record.routedTo;
       const isBypassReturn = isIrbMember(returningReviewer) || isIrbLeadership(returningReviewer);
-      submitBtn.textContent = 'Submit to Secretariat';
+      submitBtn.textContent = 'Route to Secretariat';
+      submitBtn.classList.replace('btn-primary', 'btn-secondary');
       submitToReviewersBtn.hidden = !isBypassReturn;
     }
   } else if (controller.isPendingThisDirectorApproval()) {

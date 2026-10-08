@@ -502,7 +502,7 @@ function initIrpfPage() {
     saveBtn.hidden = false;
     submitBtn.hidden = false;
     if (record.status === 'for_revision') {
-      showBanner('This IRPF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
+      showBanner('This IRPF was returned for amendments. See the Reviewer Feedback above, then resubmit.', 'error');
       piCommentPanel.hidden = false;
       // routedTo at this point still holds whoever returned it -- the S/D
       // Director (the first gate, before anyone else is ever involved), a

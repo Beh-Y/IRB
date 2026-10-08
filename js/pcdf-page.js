@@ -49,7 +49,13 @@ function showBanner(message, type) {
 // were the one who triggered it -- they get the "what happened," not the
 // internal detail behind it.
 const PCDF_LIMITED_VISIBILITY_ROLES = ['pi', 'sd-director', 'poc'];
-const PCDF_LIMITED_VISIBILITY_ACTIONS = ['submit', 'director_approve', 'returned_for_amendments', 'resubmit', 'acknowledged'];
+const PCDF_LIMITED_VISIBILITY_ACTIONS = ['submit', 'director_approve', 'resubmit', 'acknowledged'];
+
+// The Director's return comment -- and the PI's own response to it on
+// resubmission -- live in the top-of-page Comments panel (see
+// renderCommentsPanel below) instead of the Activity Log, same split as
+// IRPF/IPAF's Reviewer Feedback panel.
+const PCDF_COMMENT_ACTIONS = ['returned_for_amendments', 'resubmit'];
 
 function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
@@ -90,11 +96,8 @@ function renderActivityLog(record, role) {
     // A limited-visibility viewer sees the note text only for their own
     // actions -- an entry someone else triggered (the Director's approval)
     // shows just the milestone and when it happened, not the detail
-    // behind it. The Director's "returned_for_amendments" note is the one
-    // exception: the PI needs to see exactly why it was returned (same
-    // principle as the Reviewer Feedback panel on IRPF/IPAF, just surfaced
-    // directly here since PCDF has no separate feedback panel of its own).
-    const showNote = !limitedVisibility || entry.actor === role || entry.action === 'returned_for_amendments';
+    // behind it.
+    const showNote = !limitedVisibility || entry.actor === role;
     if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';
@@ -108,6 +111,44 @@ function renderActivityLog(record, role) {
 
     list.appendChild(li);
   });
+}
+
+/* Top-of-page panel showing the Director's return comment and the PI's own
+ * response to it, above the form -- same split as IRPF/IPAF's Reviewer
+ * Feedback panel (see renderCommentsPanel there). The PI sees a blinded
+ * "Reviewer Feedback" version (no identity, just each comment labeled
+ * Feedback/Response); the System Admin, who can see everything, gets the
+ * identified "Comments" version. The S/D Director has nothing to see here
+ * -- they're the one who left the comment, and once returned they have no
+ * further action on this record -- so the panel stays hidden for them. */
+function renderCommentsPanel(controller) {
+  const container = document.getElementById('comments-panel');
+  const heading = document.getElementById('comments-panel-heading');
+  const list = document.getElementById('comments-panel-list');
+
+  const role = controller.currentRole;
+  const isStaffReviewer = role === 'system-admin';
+  if (!isStaffReviewer && role !== 'pi') {
+    container.hidden = true;
+    return;
+  }
+
+  if (role === 'pi') {
+    heading.textContent = 'Reviewer Feedback';
+    const entries = (controller.record.history || [])
+      .filter((h) => PCDF_COMMENT_ACTIONS.includes(h.action) && h.comment && h.comment.trim())
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const hasComments = renderBlindedReviewComments(list, entries);
+    container.hidden = !hasComments;
+    return;
+  }
+
+  heading.textContent = 'Comments';
+  const entries = (controller.record.history || [])
+    .filter((h) => PCDF_COMMENT_ACTIONS.includes(h.action))
+    .map((h) => ({ identity: getRoleLabel(h.actor), decision: h.decision, comment: h.comment, timestamp: h.timestamp }));
+  const hasComments = renderIdentifiedReviewComments(list, entries);
+  container.hidden = !hasComments;
 }
 
 function initPcdfPage() {
@@ -128,6 +169,7 @@ function initPcdfPage() {
   renderPipelineStepper(document.getElementById('pipeline-stepper'), record, role);
   controller.mount(document.getElementById('pcdf-form-container'));
   renderActivityLog(record, role);
+  renderCommentsPanel(controller);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
@@ -155,7 +197,7 @@ function initPcdfPage() {
     saveBtn.hidden = false;
     submitBtn.hidden = false;
     if (record.status === 'for_revision') {
-      showBanner('This PCDF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
+      showBanner('This PCDF was returned for amendments. See the Reviewer Feedback above, then resubmit.', 'error');
       piCommentPanel.hidden = false;
     }
   } else if (controller.isPendingThisDirectorApproval()) {

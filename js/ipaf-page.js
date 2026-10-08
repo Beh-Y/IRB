@@ -422,7 +422,7 @@ function initIpafPage() {
     saveBtn.hidden = false;
     submitBtn.hidden = false;
     if (record.status === 'for_revision') {
-      showBanner('This IPAF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
+      showBanner('This IPAF was returned for amendments. See the Reviewer Feedback above, then resubmit.', 'error');
       piCommentPanel.hidden = false;
       // routedTo at this point still holds whoever returned it -- a
       // specific IRB Member/Leadership member (the bypass path) or the

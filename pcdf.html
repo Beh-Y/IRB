@@ -29,6 +29,11 @@
       </div>
     </div>
 
+    <div id="comments-panel" class="activity-log" hidden>
+      <h2 id="comments-panel-heading">Comments</h2>
+      <ul id="comments-panel-list"></ul>
+    </div>
+
     <div id="director-review-panel" class="triage-panel" hidden>
       <h2>S/D Director Review</h2>
       <p class="triage-hint">Approve this PCDF, or return it to the PI for amendments.</p>
@@ -43,7 +48,7 @@
 
     <div id="pi-comment-panel" class="triage-panel" hidden>
       <h2>Your Response</h2>
-      <p class="triage-hint">Let the S/D Director know how you've addressed their comment (see Activity below).</p>
+      <p class="triage-hint">Let the S/D Director know how you've addressed their comment (see Reviewer Feedback above).</p>
       <label for="pi-comment">Comment <span class="triage-hint-inline">(required)</span></label>
       <textarea id="pi-comment" rows="3"></textarea>
       <div id="pi-comment-error" class="field-error"></div>

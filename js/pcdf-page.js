@@ -95,7 +95,11 @@ function renderActivityLog(record, role) {
     if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';
-      note.textContent = blindIdentity ? scrubStaffIdentities(entry.note) : entry.note;
+      // blindedNote, when a history entry carries one, is a purpose-written
+      // stand-in for a note that can't be cleanly scrubbed word-by-word --
+      // e.g. "routed back to IRB Member 1, IRB Member 2" would otherwise
+      // scrub to the awkward, repetitive "an IRB Member, an IRB Member".
+      note.textContent = blindIdentity ? entry.blindedNote || scrubStaffIdentities(entry.note) : entry.note;
       li.appendChild(note);
     }
 

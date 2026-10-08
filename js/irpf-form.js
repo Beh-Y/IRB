@@ -842,11 +842,17 @@ class IrpfFormController {
           this.record.votes = this.getVotes().filter((v) => v.decision !== 'Return');
           this.record.status = 'under_review';
           const routedNote = `Resubmitted and routed back to ${returningMembers.map((id) => getRoleLabel(id)).join(', ')} for review.`;
+          const commentPrefix = comment && comment.trim() ? `${comment.trim()} — ` : '';
           saveSubmission(this.record, {
             action: 'resubmit',
             actor: this.currentRole,
             status: this.record.status,
-            note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+            note: `${commentPrefix}${routedNote}`,
+            // Naming each returning member (possibly more than one, which
+            // scrubStaffIdentities would otherwise turn into an awkward,
+            // repetitive "an IRB Member, an IRB Member") isn't meant for the
+            // PI -- a plain "routed for review" says everything they need.
+            blindedNote: `${commentPrefix}Resubmitted and routed for review.`,
             decision: 'Resubmitted',
             comment: (comment || '').trim(),
           });
@@ -861,11 +867,13 @@ class IrpfFormController {
           this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.decision !== 'Return');
           this.record.status = 'pending_leadership_approval';
           const routedNote = `Resubmitted and routed back to ${returningLeaders.map((id) => getRoleLabel(id)).join(', ')} for approval.`;
+          const commentPrefix = comment && comment.trim() ? `${comment.trim()} — ` : '';
           saveSubmission(this.record, {
             action: 'resubmit',
             actor: this.currentRole,
             status: this.record.status,
-            note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+            note: `${commentPrefix}${routedNote}`,
+            blindedNote: `${commentPrefix}Resubmitted and routed for approval.`,
             decision: 'Resubmitted',
             comment: (comment || '').trim(),
           });

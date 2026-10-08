@@ -148,7 +148,7 @@ function initPcdfPage() {
     showBanner('This PCDF is awaiting your approval as S/D Director.', 'info');
   } else if (controller.isPendingAcknowledgement()) {
     acknowledgePanel.hidden = false;
-    showBanner('This PCDF is approved. Please acknowledge your responsibilities as PI below.', 'success');
+    showBanner('This PCDF is approved. Please acknowledge below.', 'success');
   } else if (record.status === 'pending_director_approval') {
     showBanner('Awaiting S/D Director approval.', 'info');
   } else if (record.status === 'approved') {

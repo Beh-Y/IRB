@@ -383,11 +383,11 @@ function renderPendingActionTable(role) {
     endDateCell.textContent = formatIsoDate(record.data.projectEndDate);
 
     const statusCell = document.createElement('td');
-    // On the S/D Director's own to-do list, a record pending their approval
-    // is never still a "draft" from their point of view -- it's already
-    // been submitted to them -- so this one status reads as just "Pending
-    // Approval" here, even though the fuller "Draft – Pending Director
-    // Approval" label is kept everywhere else (Submissions, Report, etc.).
+    // On the S/D Director's own to-do list, this status reads as just
+    // "Pending Approval" -- dropping "Director" too, since it's their own
+    // to-do list and naming the role is redundant -- even though the
+    // fuller "Pending Director Approval" label is kept everywhere else
+    // (Submissions, Report, etc.).
     // Same idea for IRB Leadership: the shared "Pending Chairman Approval"
     // label (used everywhere else since it names the specific milestone)
     // reads oddly on the Co-Chairman's own to-do list -- it's just as much

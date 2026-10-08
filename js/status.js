@@ -7,7 +7,7 @@
 
 const STATUS_LABELS = {
   draft: 'Draft',
-  pending_director_approval: 'Draft – Pending Director Approval',
+  pending_director_approval: 'Pending Director Approval',
   pending_review: 'Pending Review',
   for_revision: 'For Revision',
   under_review: 'Under Review',

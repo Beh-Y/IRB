@@ -15,7 +15,7 @@ class PcdfFormController {
   }
 
   isEditableByPi() {
-    return this.currentRole === 'pi' && this.record.status === 'draft';
+    return this.currentRole === 'pi' && ['draft', 'for_revision'].includes(this.record.status);
   }
 
   isPendingThisDirectorApproval() {
@@ -33,6 +33,23 @@ class PcdfFormController {
       actor: this.currentRole,
       status: this.record.status,
       note: 'Approved by S/D Director.',
+    });
+    return { ok: true };
+  }
+
+  /* PCDF's only review stage is the S/D Director -- no Secretariat or IRB
+   * Member panel to bypass, unlike IRPF/IPAF, so this is just a straight
+   * Director-to-PI return, no reviewer-identity bypass logic needed. */
+  returnForAmendments(comment) {
+    if (!comment || !comment.trim()) {
+      return { ok: false, error: 'A comment is required so the PI knows what to amend.' };
+    }
+    this.record.status = 'for_revision';
+    saveSubmission(this.record, {
+      action: 'returned_for_amendments',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment.trim(),
     });
     return { ok: true };
   }
@@ -283,6 +300,8 @@ class PcdfFormController {
       return { ok: false, errors };
     }
 
+    const wasForRevision = this.record.status === 'for_revision';
+
     this.ensureCreated();
     this.assignRefNumber();
     this.record.data.piSubmissionDate = formatDateDDMMMYYYY(new Date());
@@ -291,10 +310,14 @@ class PcdfFormController {
 
     this.record.status = 'pending_director_approval';
     saveSubmission(this.record, {
-      action: 'submit',
+      action: wasForRevision ? 'resubmit' : 'submit',
       actor: this.currentRole,
       status: this.record.status,
-      note: comment && comment.trim() ? comment.trim() : 'Routed to S/D Director for approval.',
+      note: wasForRevision
+        ? `${(comment || '').trim()} — Resubmitted and routed to the S/D Director.`
+        : comment && comment.trim()
+          ? comment.trim()
+          : 'Routed to S/D Director for approval.',
     });
     return { ok: true };
   }

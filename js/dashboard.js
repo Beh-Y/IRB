@@ -106,7 +106,13 @@ function groupSubmissionsByParent() {
 
 function needsActionFromCurrentRolePcdf(record, role) {
   if (role === 'sd-director') return record.status === 'pending_director_approval';
-  if (role === 'pi') return record.status === 'draft' || (record.status === 'approved' && !record.acknowledged);
+  if (role === 'pi') {
+    return (
+      record.status === 'draft' ||
+      record.status === 'for_revision' ||
+      (record.status === 'approved' && !record.acknowledged)
+    );
+  }
   return false;
 }
 

@@ -49,7 +49,7 @@ function showBanner(message, type) {
 // were the one who triggered it -- they get the "what happened," not the
 // internal detail behind it.
 const PCDF_LIMITED_VISIBILITY_ROLES = ['pi', 'sd-director', 'poc'];
-const PCDF_LIMITED_VISIBILITY_ACTIONS = ['submit', 'director_approve', 'acknowledged'];
+const PCDF_LIMITED_VISIBILITY_ACTIONS = ['submit', 'director_approve', 'returned_for_amendments', 'resubmit', 'acknowledged'];
 
 function renderActivityLog(record, role) {
   const container = document.getElementById('activity-log');
@@ -90,8 +90,11 @@ function renderActivityLog(record, role) {
     // A limited-visibility viewer sees the note text only for their own
     // actions -- an entry someone else triggered (the Director's approval)
     // shows just the milestone and when it happened, not the detail
-    // behind it.
-    const showNote = !limitedVisibility || entry.actor === role;
+    // behind it. The Director's "returned_for_amendments" note is the one
+    // exception: the PI needs to see exactly why it was returned (same
+    // principle as the Reviewer Feedback panel on IRPF/IPAF, just surfaced
+    // directly here since PCDF has no separate feedback panel of its own).
+    const showNote = !limitedVisibility || entry.actor === role || entry.action === 'returned_for_amendments';
     if (entry.note && showNote) {
       const note = document.createElement('div');
       note.className = 'activity-note';
@@ -128,29 +131,43 @@ function initPcdfPage() {
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
-  const approveBtn = document.getElementById('btn-approve');
   const closeBtn = document.getElementById('btn-close');
   const acknowledgePanel = document.getElementById('acknowledge-panel');
   const acknowledgeBtn = document.getElementById('btn-acknowledge');
   const sendReminderBtn = document.getElementById('btn-send-reminder');
+  const directorReviewPanel = document.getElementById('director-review-panel');
+  const directorComment = document.getElementById('director-comment');
+  const directorReviewError = document.getElementById('director-review-error');
+  const approveBtn = document.getElementById('btn-approve');
+  const returnAmendmentsBtn = document.getElementById('btn-return-amendments');
+  const piCommentPanel = document.getElementById('pi-comment-panel');
+  const piCommentInput = document.getElementById('pi-comment');
+  const piCommentError = document.getElementById('pi-comment-error');
 
   saveBtn.hidden = true;
   submitBtn.hidden = true;
-  approveBtn.hidden = true;
   sendReminderBtn.hidden = true;
   acknowledgePanel.hidden = true;
+  directorReviewPanel.hidden = true;
+  piCommentPanel.hidden = true;
 
   if (controller.isEditableByPi()) {
     saveBtn.hidden = false;
     submitBtn.hidden = false;
+    if (record.status === 'for_revision') {
+      showBanner('This PCDF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
+      piCommentPanel.hidden = false;
+    }
   } else if (controller.isPendingThisDirectorApproval()) {
-    approveBtn.hidden = false;
+    directorReviewPanel.hidden = false;
     showBanner('This PCDF is awaiting your approval as S/D Director.', 'info');
   } else if (controller.isPendingAcknowledgement()) {
     acknowledgePanel.hidden = false;
     showBanner('This PCDF is approved. Please acknowledge below.', 'success');
   } else if (record.status === 'pending_director_approval') {
     showBanner('Awaiting S/D Director approval.', 'info');
+  } else if (record.status === 'for_revision') {
+    showBanner('Returned for amendments. Awaiting the PI to address the comment and resubmit.', 'info');
   } else if (record.status === 'approved') {
     showBanner(
       record.acknowledged ? 'This PCDF is approved and has been acknowledged by the PI.' : 'This PCDF is approved.',
@@ -184,14 +201,22 @@ function initPcdfPage() {
     // well past it when they click Submit -- jump back to the top so the
     // banner (or, on success, the redirect) is actually seen either way.
     window.scrollTo(0, 0);
-    const result = controller.submit();
+    const wasForRevision = record.status === 'for_revision';
+    piCommentError.textContent = '';
+    if (wasForRevision && !piCommentInput.value.trim()) {
+      piCommentError.textContent = 'A comment is required before resubmitting.';
+      return;
+    }
+    const result = controller.submit(wasForRevision ? piCommentInput.value : undefined);
     if (!result.ok) {
       const missing = describeMissingFields(result.errors, controller.fields);
       showBanner(`Please complete the following required field(s) before submitting: ${missing.join(', ')}.`, 'error');
       return;
     }
     goToDashboardWithMessage(
-      `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
+      wasForRevision
+        ? 'Resubmitted. The S/D Director has been notified.'
+        : `Submitted. Reference number: ${record.data.refNumber}. Routed to the S/D Director for approval.`,
       'success'
     );
   });
@@ -199,6 +224,15 @@ function initPcdfPage() {
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();
     goToDashboardWithMessage('Approved.', 'success');
+  });
+
+  returnAmendmentsBtn.addEventListener('click', () => {
+    const result = controller.returnForAmendments(directorComment.value);
+    if (!result.ok) {
+      directorReviewError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
   });
 
   acknowledgeBtn.addEventListener('click', () => {
@@ -215,6 +249,10 @@ function initPcdfPage() {
   // put next to the reminder text it belongs to, so the sticky top bar
   // shows just Close on the acknowledgement page.
   mirrorActionRow(document.querySelector('.form-actions'), document.getElementById('top-actions'));
+  // piCommentPanel has no .triage-actions row of its own -- the PI's
+  // actual resubmit button is the shared Submit button above, already
+  // mirrored.
+  mirrorActionRow(directorReviewPanel, document.getElementById('top-actions'));
 }
 
 document.addEventListener('DOMContentLoaded', initPcdfPage);

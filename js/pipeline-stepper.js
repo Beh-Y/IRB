@@ -28,6 +28,13 @@ function getPipelineState(record, role) {
   const isPcdf = record.formType === 'PCDF';
 
   if (isPcdf) {
+    // for_revision is PCDF's one return path -- the S/D Director is its
+    // only possible reviewer, so unlike IRPF/IPAF there's no "how far did
+    // it get" to work out: a return can only ever have come from the
+    // Director stage.
+    if (record.status === 'for_revision') {
+      return { stages: PCDF_PIPELINE_STAGES, currentIndex: 0, returned: true, furthestIndex: 1 };
+    }
     const index = { draft: 0, pending_director_approval: 1, approved: 2 }[record.status];
     return { stages: PCDF_PIPELINE_STAGES, currentIndex: index === undefined ? 0 : index, returned: false, furthestIndex: 0 };
   }

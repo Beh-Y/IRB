@@ -137,47 +137,108 @@ function renderActivityLog(record, role) {
 // from this panel.
 const STAFF_COMMENT_ACTIONS = ['member_vote', 'leadership_vote', 'returned_for_amendments', 'resubmit'];
 
-// The S/D Director's own return-and-resubmit exchange with the PI, shown to
-// the Director the same way it's shown to the PI (just not blinded, since
-// they're one of the two parties in it) -- but never the Member/Leadership
-// panels' deliberation, which the Director stays blind to like everywhere
-// else. Reaching pending_director_approval a second time only ever happens
-// via the Director's own earlier return (see submit()'s returnedByDirector
-// branch in ipaf-form.js), so filtering to just these two actions can never
-// pull in an exchange the Director shouldn't see.
-const DIRECTOR_COMMENT_ACTIONS = ['returned_for_amendments', 'resubmit'];
+// The S/D Director's own return-and-resubmit exchange with the PI happens
+// entirely before the record is ever routed to the Secretariat -- a
+// 'director_approve' entry is the one-way door out of that gate (nothing
+// ever routes back to pending_director_approval afterward). So "still
+// before that door" vs "already through it" is just: does a
+// 'director_approve' entry exist in history yet.
+function directorApproveIndex(record) {
+  return (record.history || []).findIndex((h) => h.action === 'director_approve');
+}
 
-/* Top-of-page panel showing every comment left so far. Staff reviewers
- * (Secretariat, IRB Members, IRB Leadership, System Admin) see it fully
- * identified -- who left each one, their decision, and when -- built from
- * the permanent
- * history log (see STAFF_COMMENT_ACTIONS above) so it survives re-triage
- * and re-routing, in chronological order like a conversation thread. The
- * PI sees a blinded version instead -- no identity or decision, just each
+/* Separate, PI<->Director-only feedback panel -- kept apart from the IRB
+ * Panel's own Comments/Reviewer Feedback panel below (see
+ * renderCommentsPanel) so neither thread leaks into the other: the
+ * Secretariat/IRB Members/IRB Leadership never see what the Director said
+ * to the PI before the record ever reached them, and once it has reached
+ * them this panel disappears entirely, for every role including the PI and
+ * the Director themselves -- it was never meant to be a permanent record of
+ * that first exchange, just the live context while it's still relevant. POC
+ * never sees either panel. */
+function renderDirectorCommentsPanel(controller) {
+  const container = document.getElementById('director-comments-panel');
+  const heading = document.getElementById('director-comments-panel-heading');
+  const list = document.getElementById('director-comments-panel-list');
+  const record = controller.record;
+  const role = controller.currentRole;
+
+  if (directorApproveIndex(record) !== -1) {
+    container.hidden = true;
+    return;
+  }
+
+  if (role !== 'pi' && role !== 'sd-director' && role !== 'system-admin') {
+    container.hidden = true;
+    return;
+  }
+
+  // Everything in history at this point is necessarily part of the
+  // Director<->PI exchange -- nothing else can have happened yet.
+  const DIRECTOR_COMMENT_ACTIONS = ['returned_for_amendments', 'resubmit'];
+
+  if (role === 'pi') {
+    heading.textContent = 'S/D Director Feedback';
+    const entries = (record.history || [])
+      .filter((h) => DIRECTOR_COMMENT_ACTIONS.includes(h.action) && h.comment && h.comment.trim())
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const hasComments = renderBlindedReviewComments(list, entries);
+    container.hidden = !hasComments;
+    return;
+  }
+
+  heading.textContent = 'Comments';
+  const entries = (record.history || [])
+    .filter((h) => DIRECTOR_COMMENT_ACTIONS.includes(h.action))
+    .map((h) => ({ identity: getRoleLabel(h.actor), decision: h.decision, comment: h.comment, timestamp: h.timestamp }));
+  const hasComments = renderIdentifiedReviewComments(list, entries);
+  container.hidden = !hasComments;
+}
+
+/* Top-of-page panel showing every comment left so far between the PI and
+ * the IRB Panel (Secretariat, IRB Members, IRB Leadership) -- strictly
+ * after the record first reached the Secretariat (see directorApproveIndex
+ * above), so the Director's own earlier exchange with the PI never shows up
+ * here; that lives in its own separate panel instead (see
+ * renderDirectorCommentsPanel). Staff reviewers (Secretariat, IRB Members,
+ * IRB Leadership, System Admin) see it fully identified -- who left each
+ * one, their decision, and when -- built from the permanent history log
+ * (see STAFF_COMMENT_ACTIONS above) so it survives re-triage and
+ * re-routing, in chronological order like a conversation thread. The PI
+ * sees a blinded version instead -- no identity or decision, just each
  * comment labeled Feedback/Response -- built from that same permanent
  * history so every past round (and the PI's own response to each) still
- * shows up here, not just the current cycle: this is the PI's one
- * feedback panel, and it's meant to read as the full back-and-forth. The
- * mid-page IRB Member Panel / IRB Leadership Approval panels stay hidden
- * for the PI to avoid showing the same thing twice. */
+ * shows up here, not just the current cycle. The mid-page IRB Member Panel
+ * / IRB Leadership Approval panels stay hidden for the PI to avoid showing
+ * the same thing twice. The S/D Director doesn't see this panel at all --
+ * their part in the record's life ended at the gate before it. */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
   const heading = document.getElementById('comments-panel-heading');
   const list = document.getElementById('comments-panel-list');
+  const record = controller.record;
 
   const role = controller.currentRole;
   const isStaffReviewer = isSecretariat(role) || isIrbMember(role) || isIrbLeadership(role) || role === 'system-admin';
-  if (!isStaffReviewer && role !== 'pi' && role !== 'sd-director') {
+  if (!isStaffReviewer && role !== 'pi') {
     container.hidden = true;
     return;
   }
+
+  const afterDirectorIndex = directorApproveIndex(record);
+  if (afterDirectorIndex === -1) {
+    // Never reached the Secretariat -- nothing for this panel to show yet.
+    container.hidden = true;
+    return;
+  }
+  const irbPanelHistory = (record.history || []).filter((h, i) => i > afterDirectorIndex);
 
   if (role === 'pi') {
     heading.textContent = 'Reviewer Feedback';
     // Includes "Route to Secretariat" comments too -- the PI should see
     // the reasoning behind every handoff, not just an Approve/Return
     // decision.
-    const entries = (controller.record.history || [])
+    const entries = irbPanelHistory
       .filter((h) => STAFF_COMMENT_ACTIONS.includes(h.action) && h.comment && h.comment.trim())
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const hasComments = renderBlindedReviewComments(list, entries);
@@ -185,18 +246,8 @@ function renderCommentsPanel(controller) {
     return;
   }
 
-  if (role === 'sd-director') {
-    heading.textContent = 'Comments';
-    const entries = (controller.record.history || [])
-      .filter((h) => DIRECTOR_COMMENT_ACTIONS.includes(h.action))
-      .map((h) => ({ identity: getRoleLabel(h.actor), decision: h.decision, comment: h.comment, timestamp: h.timestamp }));
-    const hasComments = renderIdentifiedReviewComments(list, entries);
-    container.hidden = !hasComments;
-    return;
-  }
-
   heading.textContent = 'Comments';
-  const entries = (controller.record.history || [])
+  const entries = irbPanelHistory
     .filter((h) => STAFF_COMMENT_ACTIONS.includes(h.action))
     .map((h) => ({ identity: getRoleLabel(h.actor), decision: h.decision, comment: h.comment, timestamp: h.timestamp }));
   const hasComments = renderIdentifiedReviewComments(list, entries);
@@ -373,6 +424,7 @@ function initIpafPage() {
   document.getElementById('link-back-to-irpf').href = `irpf.html?id=${record.parentIrpfId}`;
   controller.mount(document.getElementById('ipaf-form-container'));
   renderActivityLog(record, role);
+  renderDirectorCommentsPanel(controller);
   renderCommentsPanel(controller);
   renderPiCategoryGuidancePanel(record, role);
   renderVotingSummary(controller);

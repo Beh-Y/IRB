@@ -52,10 +52,23 @@ function renderHeader(activePage) {
       ? `<a href="report.html" class="${activePage === 'report' ? 'active' : ''}">Report</a>`
       : '';
 
+  // POC never has anything of their own to action -- needsActionFromCurrentRole
+  // (dashboard.js) has no branch for 'poc', so index.html's "Pending My
+  // Action" list is always empty for them -- so the nav skips straight to
+  // View Project Submissions instead of a Dashboard link that only ever
+  // leads to an empty page.
+  const dashboardLink =
+    currentRole === 'poc' ? '' : `<a href="index.html" class="${activePage === 'dashboard' ? 'active' : ''}">Dashboard</a>`;
+
+  // Same reasoning as dashboardLink above -- the logo's "go home" link
+  // shouldn't land POC on that same always-empty Dashboard either.
+  const homeHref = currentRole === 'poc' ? 'submissions.html' : 'index.html';
+  const homeTitle = currentRole === 'poc' ? 'View Project Submissions' : 'Dashboard';
+
   container.innerHTML = `
     <div class="header-bar">
       <div class="header-brand">
-        <a href="index.html" class="header-home-link" title="Dashboard" aria-label="Go to dashboard">
+        <a href="${homeHref}" class="header-home-link" title="${homeTitle}" aria-label="${homeTitle}">
           <svg class="header-home-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 10.5 12 3l9 7.5" />
             <path d="M5 9.5V21h14V9.5" />
@@ -65,7 +78,7 @@ function renderHeader(activePage) {
         <span class="header-title">SP IRB Process Management</span>
       </div>
       <nav class="header-nav">
-        <a href="index.html" class="${activePage === 'dashboard' ? 'active' : ''}">Dashboard</a>
+        ${dashboardLink}
         <a href="submissions.html" class="${activePage === 'submissions' ? 'active' : ''}">View Project Submissions</a>
         ${newSubmissionDropdown}
         ${reportLink}

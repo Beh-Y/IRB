@@ -208,6 +208,16 @@ function renderActivityLog(record, role) {
 // from this panel.
 const STAFF_COMMENT_ACTIONS = ['member_vote', 'leadership_vote', 'returned_for_amendments', 'resubmit'];
 
+// The S/D Director's own return-and-resubmit exchange with the PI, shown to
+// the Director the same way it's shown to the PI (just not blinded, since
+// they're one of the two parties in it) -- but never the Member/Leadership
+// panels' deliberation, which the Director stays blind to like everywhere
+// else. Reaching pending_director_approval a second time only ever happens
+// via the Director's own earlier return (see submit()'s returnedByDirector
+// branch in irpf-form.js), so filtering to just these two actions can never
+// pull in an exchange the Director shouldn't see.
+const DIRECTOR_COMMENT_ACTIONS = ['returned_for_amendments', 'resubmit'];
+
 /* Top-of-page panel showing every comment left so far. Staff reviewers
  * (Secretariat, IRB Members, IRB Leadership, System Admin) see it fully
  * identified -- who left each one, their decision, and when -- built from
@@ -227,7 +237,7 @@ function renderCommentsPanel(controller) {
 
   const role = controller.currentRole;
   const isStaffReviewer = isSecretariat(role) || isIrbMember(role) || isIrbLeadership(role) || role === 'system-admin';
-  if (!isStaffReviewer && role !== 'pi') {
+  if (!isStaffReviewer && role !== 'pi' && role !== 'sd-director') {
     container.hidden = true;
     return;
   }
@@ -241,6 +251,16 @@ function renderCommentsPanel(controller) {
       .filter((h) => STAFF_COMMENT_ACTIONS.includes(h.action) && h.comment && h.comment.trim())
       .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
     const hasComments = renderBlindedReviewComments(list, entries);
+    container.hidden = !hasComments;
+    return;
+  }
+
+  if (role === 'sd-director') {
+    heading.textContent = 'Comments';
+    const entries = (controller.record.history || [])
+      .filter((h) => DIRECTOR_COMMENT_ACTIONS.includes(h.action))
+      .map((h) => ({ identity: getRoleLabel(h.actor), decision: h.decision, comment: h.comment, timestamp: h.timestamp }));
+    const hasComments = renderIdentifiedReviewComments(list, entries);
     container.hidden = !hasComments;
     return;
   }

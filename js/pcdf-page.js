@@ -117,17 +117,18 @@ function renderActivityLog(record, role) {
  * response to it, above the form -- same split as IRPF/IPAF's Reviewer
  * Feedback panel (see renderCommentsPanel there). The PI sees a blinded
  * "Reviewer Feedback" version (no identity, just each comment labeled
- * Feedback/Response); the System Admin, who can see everything, gets the
- * identified "Comments" version. The S/D Director has nothing to see here
- * -- they're the one who left the comment, and once returned they have no
- * further action on this record -- so the panel stays hidden for them. */
+ * Feedback/Response). The S/D Director and System Admin both see it fully
+ * identified -- PCDF only ever has these two parties in the exchange, so
+ * there's no one for the Director to be blinded from; they need this too,
+ * since a second review after their own return would otherwise give them
+ * no way to see their original comment or the PI's response to it. */
 function renderCommentsPanel(controller) {
   const container = document.getElementById('comments-panel');
   const heading = document.getElementById('comments-panel-heading');
   const list = document.getElementById('comments-panel-list');
 
   const role = controller.currentRole;
-  const isStaffReviewer = role === 'system-admin';
+  const isStaffReviewer = role === 'system-admin' || role === 'sd-director';
   if (!isStaffReviewer && role !== 'pi') {
     container.hidden = true;
     return;

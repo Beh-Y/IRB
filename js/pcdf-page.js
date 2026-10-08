@@ -203,7 +203,7 @@ function initPcdfPage() {
 
   acknowledgeBtn.addEventListener('click', () => {
     controller.acknowledge();
-    goToDashboardWithMessage('Thank you for acknowledging your responsibilities as PI.', 'success');
+    goToDashboardWithMessage('Thank you for acknowledging.', 'success');
   });
 
   closeBtn.addEventListener('click', () => {

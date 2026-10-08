@@ -21,9 +21,9 @@
  * - Template ID: Email Templates -> your template
  * - Public Key: Account (top right) -> API Keys
  */
-const EMAILJS_PUBLIC_KEY = 'HTwjRMzQ4kQGGRKdj';
-const EMAILJS_SERVICE_ID = 'service_blos6xn';
-const EMAILJS_TEMPLATE_ID = 'template_fzr3hd7';
+const EMAILJS_PUBLIC_KEY = 'H6qgtRUpoNym2-Yhq';
+const EMAILJS_SERVICE_ID = 'service_lzq25r9';
+const EMAILJS_TEMPLATE_ID = 'template_9ly2w9o';
 
 if (typeof emailjs !== 'undefined') {
   emailjs.init(EMAILJS_PUBLIC_KEY);

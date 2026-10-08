@@ -50,6 +50,8 @@ class PcdfFormController {
       actor: this.currentRole,
       status: this.record.status,
       note: comment.trim(),
+      decision: 'Returned for Amendments',
+      comment: comment.trim(),
     });
     return { ok: true };
   }
@@ -318,6 +320,7 @@ class PcdfFormController {
         : comment && comment.trim()
           ? comment.trim()
           : 'Routed to S/D Director for approval.',
+      comment: wasForRevision ? (comment || '').trim() : undefined,
     });
     return { ok: true };
   }

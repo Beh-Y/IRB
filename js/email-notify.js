@@ -35,6 +35,25 @@ if (typeof emailjs !== 'undefined') {
  * window.location changes right after Submit. */
 const pendingEmailSends = [];
 
+/* How long the redirect will wait on one email send before giving up on
+ * it. A failed request (bad ID, offline, blocked) still rejects and
+ * resolves quickly via the .catch below -- this is only for a request
+ * that neither resolves nor rejects at all (some proxies/firewalls just
+ * drop a blocked connection silently instead of refusing it), which would
+ * otherwise hang the whole page on Submit forever, since nothing left to
+ * await it after a fresh navigation abandons the wait. */
+const EMAIL_SEND_TIMEOUT_MS = 5000;
+
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise((resolve) => setTimeout(() => {
+      console.warn(`EmailJS notification timed out after ${ms}ms -- proceeding without waiting further.`);
+      resolve();
+    }, ms)),
+  ]);
+}
+
 /* Sends one real test email via EmailJS. { form_type, ref_number,
  * form_link, message } are the template params -- use them as
  * {{form_type}}, {{ref_number}}, {{form_link}}, {{message}} placeholders
@@ -58,5 +77,5 @@ function sendEmailNotification({ subject, message, formType, refNumber, formLink
       message,
     })
     .catch((err) => console.error('EmailJS notification failed:', err));
-  pendingEmailSends.push(send);
+  pendingEmailSends.push(withTimeout(send, EMAIL_SEND_TIMEOUT_MS));
 }

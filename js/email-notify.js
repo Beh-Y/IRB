@@ -23,7 +23,7 @@
  */
 const EMAILJS_PUBLIC_KEY = 'H6qgtRUpoNym2-Yhq';
 const EMAILJS_SERVICE_ID = 'service_lzq25r9';
-const EMAILJS_TEMPLATE_ID = 'template_9ly2w9o';
+const EMAILJS_TEMPLATE_ID = 'template_uusy0kq';
 
 if (typeof emailjs !== 'undefined') {
   emailjs.init(EMAILJS_PUBLIC_KEY);

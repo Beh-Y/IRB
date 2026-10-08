@@ -363,6 +363,18 @@ class IrpfFormController {
 
     let note = `${approval.approverName}: ${decision}${approval.comment ? ' — ' + approval.comment : ''}`;
 
+    /* Once both leaders have weighed in with the SAME outcome recommendation
+     * (both 'Approve for Exemption', or both 'IPAF Required'), that's a
+     * unanimous decision -- record it as the final outcome immediately
+     * rather than waiting on the Secretariat to collate two matching
+     * recommendations. A split decision (one of each) still hands off to
+     * the Secretariat's collate panel exactly as before, via the existing
+     * branch below. */
+    const relevantApprovals = this.record.leadershipApprovals.filter((a) => IRB_LEADERSHIP_IDS.includes(a.approverId));
+    const bothLeadersVoted = IRB_LEADERSHIP_IDS.every((id) => relevantApprovals.some((a) => a.approverId === id));
+    const isOutcomeDecision = decision === 'Approve for Exemption' || decision === 'IPAF Required';
+    const isUnanimousOutcome = isOutcomeDecision && bothLeadersVoted && relevantApprovals.every((a) => a.decision === decision);
+
     /* Same bypass as a member's return (see castVote): sends the IRPF
      * straight back to the PI instead of waiting on the Secretariat's
      * collation step. Resubmission routes it back to this same leader. */
@@ -370,6 +382,8 @@ class IrpfFormController {
       this.record.status = 'for_revision';
       this.record.routedTo = this.currentRole;
       note += ' Routed directly to the PI for amendments.';
+    } else if (isUnanimousOutcome) {
+      note += ' Both leaders unanimously agreed -- outcome recorded automatically.';
     } else if (isIrbLeadership(this.record.routedTo) && this.record.status === 'pending_leadership_approval') {
       /* Same hand-back as castVote's, and the same broadened check: a
        * leadership bypass is active and the PI has resubmitted, regardless
@@ -392,6 +406,18 @@ class IrpfFormController {
       decision,
       comment: approval.comment,
     });
+
+    // A separate history entry for the outcome itself, same as when the
+    // Secretariat manually collates one -- keeps the vote and the
+    // consequent decision as two distinct, clearly-attributed log lines.
+    if (isUnanimousOutcome) {
+      if (decision === 'Approve for Exemption') {
+        this.approveForExemption('Both IRB Leadership members unanimously approved for exemption.');
+      } else {
+        this.decideToCreateIpaf('Both IRB Leadership members unanimously agreed an IPAF is required.');
+      }
+    }
+
     return { ok: true };
   }
 

@@ -69,7 +69,12 @@ function getPipelineState(record, role) {
   // for_revision -- under either view, "reached Members" and "reached
   // Leadership" both collapse to the same "reached Review" point for a
   // limited-visibility viewer, since those are the same single stage to
-  // them.
+  // them. The one case that never reached Secretariat at all is a Director
+  // return straight off the PI's initial submission -- routedTo is still
+  // 'sd-director' then, since nothing downstream has touched it yet.
+  if (record.routedTo === 'sd-director') {
+    return { stages, currentIndex: 0, returned: true, furthestIndex: 1 };
+  }
   const reachedReview = (record.leadershipApprovals || []).length > 0 || (record.votes || []).length > 0;
   const furthestIndex = collapsed
     ? reachedReview

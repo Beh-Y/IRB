@@ -443,8 +443,12 @@ function initIrpfPage() {
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
   const submitToReviewersBtn = document.getElementById('btn-submit-to-reviewers');
-  const approveBtn = document.getElementById('btn-approve');
   const sendReminderBtn = document.getElementById('btn-send-reminder');
+  const directorReviewPanel = document.getElementById('director-review-panel');
+  const directorComment = document.getElementById('director-comment');
+  const directorReviewError = document.getElementById('director-review-error');
+  const approveBtn = document.getElementById('btn-approve');
+  const directorReturnAmendmentsBtn = document.getElementById('btn-director-return-amendments');
   const closeBtn = document.getElementById('btn-close');
   const triagePanel = document.getElementById('triage-panel');
   const triageComment = document.getElementById('triage-comment');
@@ -484,8 +488,8 @@ function initIrpfPage() {
   saveBtn.hidden = true;
   submitBtn.hidden = true;
   submitToReviewersBtn.hidden = true;
-  approveBtn.hidden = true;
   sendReminderBtn.hidden = true;
+  directorReviewPanel.hidden = true;
   triagePanel.hidden = true;
   voteFormPanel.hidden = true;
   collatePanel.hidden = true;
@@ -500,23 +504,28 @@ function initIrpfPage() {
     if (record.status === 'for_revision') {
       showBanner('This IRPF was returned for amendments. See the comment in Activity below, then resubmit.', 'error');
       piCommentPanel.hidden = false;
-      // routedTo at this point still holds whoever returned it -- a
-      // specific IRB Member/Leadership member (the bypass path) or the
-      // Secretariat itself. When it's a specific reviewer, the PI gets both
-      // buttons -- send it straight back to that reviewer, or loop the
-      // Secretariat in instead. When it was the Secretariat's own return,
-      // there's no specific reviewer to choose, so only one button shows.
-      // Labeled and styled to match the IRB Member/Leadership panels' own
-      // "Route to Secretariat" button exactly (same text, same secondary/
-      // outlined look) -- it's the same deferral action from the PI's side.
+      // routedTo at this point still holds whoever returned it -- the S/D
+      // Director (the first gate, before anyone else is ever involved), a
+      // specific IRB Member/Leadership member (the bypass path), or the
+      // Secretariat itself. A Director return has only one place to go
+      // back to, so the button stays plain "Submit"; the other two cases
+      // are labeled and styled to match the IRB Member/Leadership panels'
+      // own "Route to Secretariat" button (same text, same secondary/
+      // outlined look) -- it's the same deferral action from the PI's
+      // side. When it's a specific reviewer (not the Director or the
+      // Secretariat itself), the PI also gets a second button to send it
+      // straight back to that reviewer instead.
       const returningReviewer = record.routedTo;
+      const isDirectorReturn = returningReviewer === 'sd-director';
       const isBypassReturn = isIrbMember(returningReviewer) || isIrbLeadership(returningReviewer);
-      submitBtn.textContent = 'Route to Secretariat';
-      submitBtn.classList.replace('btn-primary', 'btn-secondary');
+      if (!isDirectorReturn) {
+        submitBtn.textContent = 'Route to Secretariat';
+        submitBtn.classList.replace('btn-primary', 'btn-secondary');
+      }
       submitToReviewersBtn.hidden = !isBypassReturn;
     }
   } else if (controller.isPendingThisDirectorApproval()) {
-    approveBtn.hidden = false;
+    directorReviewPanel.hidden = false;
     showBanner(
       'This IRPF is awaiting your approval as S/D Director before it can be routed to the IRB Secretariat.',
       'info'
@@ -676,6 +685,15 @@ function initIrpfPage() {
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();
     goToDashboardWithMessage('Approved. Routed to the IRB Secretariat for triage.', 'success');
+  });
+
+  directorReturnAmendmentsBtn.addEventListener('click', () => {
+    const result = controller.returnForAmendments(directorComment.value);
+    if (!result.ok) {
+      directorReviewError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
   });
 
   triageRouteBtn.addEventListener('click', () => {
@@ -855,6 +873,7 @@ function initIrpfPage() {
   // panel, instead of relocating to the sticky top bar -- which then shows
   // just Close on the acknowledgement page.
   [
+    directorReviewPanel,
     triagePanel,
     voteFormPanel,
     underReviewActionPanel,

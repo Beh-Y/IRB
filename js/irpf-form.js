@@ -824,12 +824,27 @@ class IrpfFormController {
     const wasForRevision = this.record.status === 'for_revision';
 
     if (wasForRevision) {
-      // Resubmission after a Return skips the Director gate either way.
       const returningReviewer = this.record.routedTo;
       const returnedByMember = isIrbMember(returningReviewer);
       const returnedByLeader = isIrbLeadership(returningReviewer);
+      const returnedByDirector = returningReviewer === 'sd-director';
 
-      if ((returnedByMember || returnedByLeader) && target === 'reviewer') {
+      if (returnedByDirector) {
+        // The S/D Director is the first gate, before the Secretariat or
+        // either review panel is ever involved -- a return from here goes
+        // straight back to the Director for a fresh decision, not through
+        // any of the bypass/Secretariat routing below.
+        this.record.status = 'pending_director_approval';
+        const routedNote = 'Resubmitted and routed to the S/D Director for approval.';
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+          decision: 'Resubmitted',
+          comment: (comment || '').trim(),
+        });
+      } else if ((returnedByMember || returnedByLeader) && target === 'reviewer') {
         if (returnedByMember) {
           // Every member with a live Return on record gets a clean slate --
           // not just whichever one routedTo happens to still point at. Two
@@ -968,6 +983,12 @@ class IrpfFormController {
       return { ok: false, error: 'A comment is required so the PI knows what to amend.' };
     }
     this.record.status = 'for_revision';
+    // Records who this needs to come back to on resubmission -- submit()
+    // branches on this. A no-op for the existing Secretariat-triggered
+    // callers (routedTo is already their own id by the time they can call
+    // this), but necessary now that the S/D Director can also call this
+    // from the first gate, before routedTo has ever been set to anyone.
+    this.record.routedTo = this.currentRole;
     saveSubmission(this.record, {
       action: 'returned_for_amendments',
       actor: this.currentRole,

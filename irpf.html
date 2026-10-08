@@ -48,6 +48,18 @@
 
     <div id="pi-category-guidance-panel" hidden></div>
 
+    <div id="director-review-panel" class="triage-panel" hidden>
+      <h2>S/D Director Review</h2>
+      <p class="triage-hint">Approve this IRPF, or return it to the PI for amendments.</p>
+      <label for="director-comment">Comment <span class="triage-hint-inline">(required if returning for amendments)</span></label>
+      <textarea id="director-comment" rows="3"></textarea>
+      <div id="director-review-error" class="field-error"></div>
+      <div class="triage-actions">
+        <button id="btn-approve" type="button" class="btn btn-primary">Approve</button>
+        <button id="btn-director-return-amendments" type="button" class="btn btn-secondary">Return for Amendments</button>
+      </div>
+    </div>
+
     <div id="triage-panel" class="triage-panel" hidden>
       <h2>Secretariat Review</h2>
       <p class="triage-hint">
@@ -172,7 +184,6 @@
       <button id="btn-save" type="button" class="btn btn-secondary">Save</button>
       <button id="btn-submit" type="button" class="btn btn-primary btn-align-right">Submit</button>
       <button id="btn-submit-to-reviewers" type="button" class="btn btn-primary" hidden>Submit to Reviewers</button>
-      <button id="btn-approve" type="button" class="btn btn-primary">Approve</button>
       <button id="btn-send-reminder" type="button" class="btn btn-secondary" hidden>Send Reminder</button>
       <button id="btn-close" type="button" class="btn btn-secondary">Close</button>
     </div>

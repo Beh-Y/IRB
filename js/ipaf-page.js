@@ -364,8 +364,12 @@ function initIpafPage() {
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');
   const submitToReviewersBtn = document.getElementById('btn-submit-to-reviewers');
-  const approveBtn = document.getElementById('btn-approve');
   const closeBtn = document.getElementById('btn-close');
+  const directorReviewPanel = document.getElementById('director-review-panel');
+  const directorComment = document.getElementById('director-comment');
+  const directorReviewError = document.getElementById('director-review-error');
+  const approveBtn = document.getElementById('btn-approve');
+  const directorReturnAmendmentsBtn = document.getElementById('btn-director-return-amendments');
   const triagePanel = document.getElementById('triage-panel');
   const triageComment = document.getElementById('triage-comment');
   const triageError = document.getElementById('triage-error');
@@ -404,7 +408,7 @@ function initIpafPage() {
   saveBtn.hidden = true;
   submitBtn.hidden = true;
   submitToReviewersBtn.hidden = true;
-  approveBtn.hidden = true;
+  directorReviewPanel.hidden = true;
   sendReminderBtn.hidden = true;
   triagePanel.hidden = true;
   voteFormPanel.hidden = true;
@@ -430,13 +434,16 @@ function initIpafPage() {
       // "Route to Secretariat" button exactly (same text, same secondary/
       // outlined look) -- it's the same deferral action from the PI's side.
       const returningReviewer = record.routedTo;
+      const isDirectorReturn = returningReviewer === 'sd-director';
       const isBypassReturn = isIrbMember(returningReviewer) || isIrbLeadership(returningReviewer);
-      submitBtn.textContent = 'Route to Secretariat';
-      submitBtn.classList.replace('btn-primary', 'btn-secondary');
+      if (!isDirectorReturn) {
+        submitBtn.textContent = 'Route to Secretariat';
+        submitBtn.classList.replace('btn-primary', 'btn-secondary');
+      }
       submitToReviewersBtn.hidden = !isBypassReturn;
     }
   } else if (controller.isPendingThisDirectorApproval()) {
-    approveBtn.hidden = false;
+    directorReviewPanel.hidden = false;
     showBanner(
       'This IPAF is awaiting your approval as S/D Director before it can be routed to the IRB Secretariat.',
       'info'
@@ -566,6 +573,15 @@ function initIpafPage() {
   approveBtn.addEventListener('click', () => {
     controller.directorApprove();
     goToDashboardWithMessage('Approved. Routed to the IRB Secretariat for triage.', 'success');
+  });
+
+  directorReturnAmendmentsBtn.addEventListener('click', () => {
+    const result = controller.returnForAmendments(directorComment.value);
+    if (!result.ok) {
+      directorReviewError.textContent = result.error;
+      return;
+    }
+    goToDashboardWithMessage('Sent back for revision. The PI has been notified.', 'success');
   });
 
   triageRouteBtn.addEventListener('click', () => {
@@ -754,7 +770,7 @@ function initIpafPage() {
   // reminder text it belongs to, right above the Comments panel, instead
   // of relocating to the sticky top bar -- which then shows just Close on
   // the acknowledgement page.
-  [triagePanel, voteFormPanel, underReviewActionPanel, leadershipApprovalPanel, collatePanel].forEach((panel) => {
+  [directorReviewPanel, triagePanel, voteFormPanel, underReviewActionPanel, leadershipApprovalPanel, collatePanel].forEach((panel) => {
     mirrorActionRow(panel, document.getElementById('top-actions'));
   });
 }

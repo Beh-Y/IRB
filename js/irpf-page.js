@@ -265,7 +265,12 @@ function renderVotingSummary(controller) {
     return;
   }
 
-  const assigned = controller.getAssignedMembers();
+  // The full "ever assigned" roster (see getEverAssignedMembers), not just
+  // the current round's assignedMembers -- otherwise a member who already
+  // voted, then got left out of a later Secretariat re-route, would vanish
+  // from both the tally ("1 of 1" instead of "1 of 2") and this list,
+  // making the remaining count unexplained.
+  const assigned = controller.getEverAssignedMembers();
   if (assigned.length === 0) {
     container.hidden = true;
     return;

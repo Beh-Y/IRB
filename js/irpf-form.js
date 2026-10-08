@@ -180,11 +180,17 @@ class IrpfFormController {
     );
   }
 
+  /* assignedTotal uses the full "ever assigned" roster (see
+   * getEverAssignedMembers), not just the current round's assignedMembers --
+   * otherwise a Secretariat re-route that narrows the panel down to one
+   * remaining reviewer (everyone else having already voted in an earlier
+   * round) would show "1 of 1 reviewed" instead of e.g. "1 of 2", losing
+   * track of how many were actually ever asked to weigh in. */
   voteTally() {
     const votes = this.getVotes();
     return {
       total: votes.length,
-      assignedTotal: this.getAssignedMembers().length,
+      assignedTotal: this.getEverAssignedMembers().length,
       approveCount: votes.filter((v) => v.decision === 'Approve').length,
       returnCount: votes.filter((v) => v.decision === 'Return').length,
       routeToSecretariatCount: votes.filter((v) => v.decision === 'Route to Secretariat').length,

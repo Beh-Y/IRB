@@ -76,6 +76,7 @@ const IPAF_SCHEMA = [
         maxWords: 300,
         visibleIf: (d) => d.involvesHumanSubjects === 'Yes',
         requiredIf: (d) => d.involvesHumanSubjects === 'Yes',
+        pairPasteable: true,
       },
       {
         id: 'projectTypes',

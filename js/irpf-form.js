@@ -481,6 +481,10 @@ class IrpfFormController {
     controlWrap.className = 'field-control';
     const input = this.buildControl(field, controlWrap);
 
+    if (field.pairPasteable && input.tagName === 'TEXTAREA' && !input.disabled) {
+      controlWrap.appendChild(buildPasteFromPairButton(input, () => this.onFieldChanged(field)));
+    }
+
     const hintEl = document.createElement('div');
     hintEl.className = 'field-hint';
     controlWrap.appendChild(hintEl);

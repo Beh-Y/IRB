@@ -86,6 +86,35 @@ function buildPairContextText(record, role) {
   return lines.join('\n');
 }
 
+/* Small "Paste from Pair" link-button for fields flagged pairPasteable in
+ * their schema (e.g. Methodology) -- reads the clipboard and fills the
+ * field directly in one click, instead of the PI clicking into the field
+ * and pasting themselves. This is still an ordinary paste underneath; it
+ * saves one step, nothing more -- there's no way to pull this from Pair's
+ * own tab directly, same cross-origin restriction as everywhere else Pair
+ * is involved. Falls back to just focusing the field, so the PI can paste
+ * manually (Ctrl/Cmd+V), if the Clipboard API is unavailable or denied. */
+function buildPasteFromPairButton(inputEl, onPasted) {
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn-link paste-from-pair-btn';
+  btn.textContent = 'Paste from Pair';
+
+  btn.addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) {
+        inputEl.value = text;
+        onPasted();
+      }
+    } catch (err) {
+      inputEl.focus();
+    }
+  });
+
+  return btn;
+}
+
 // The guidance description + link, shared verbatim across all three forms
 // so they never drift. Kept category-agnostic in its wording -- IRPF/IPAF
 // tailor the actual link by Category of Research (see

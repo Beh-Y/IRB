@@ -113,7 +113,7 @@ const IRPF_SCHEMA = [
     id: 'section2',
     title: 'Section 2 – Project Description',
     fields: [
-      { id: 'synopsisObjective', label: 'Synopsis and Objective', type: 'textarea', required: true, maxWords: 300 },
+      { id: 'synopsisObjective', label: 'Synopsis and Objective', type: 'textarea', required: true, maxWords: 300, pairPasteable: true },
       { id: 'industryCollaboration', label: 'Collaboration with Industry or Financial Support', type: 'yesno', required: true },
       {
         id: 'industryCollaborationDetails',
@@ -167,6 +167,7 @@ const IRPF_SCHEMA = [
         info: ANNEX_A.methodology,
         visibleIf: section1BAnyYes,
         requiredIf: section1BAnyYes,
+        pairPasteable: true,
       },
       {
         id: 'appendixDocs',

@@ -802,6 +802,11 @@ body {
   font-size: 0.85rem;
 }
 
+.paste-from-pair-btn {
+  display: block;
+  margin-top: 0.35rem;
+}
+
 .btn-delete {
   color: var(--color-error-text);
   margin-left: 0.75rem;

@@ -91,6 +91,15 @@ class PcdfFormController {
         sectionEl.appendChild(grid);
       }
 
+      if (section.id === 'projectDetails') {
+        // PCDF has no Category of Research field of its own to sit the
+        // guidance box beside (unlike IRPF), so -- same as IPAF, which
+        // inherits its category from the parent IRPF instead of asking for
+        // one -- it goes here, next to the rest of Project Details.
+        this.categoryGuidanceEls = buildCategoryGuidanceBox();
+        sectionEl.appendChild(this.categoryGuidanceEls.guidance);
+      }
+
       container.appendChild(sectionEl);
     });
 
@@ -220,6 +229,16 @@ class PcdfFormController {
         els.hintEl.textContent = '';
       }
     });
+
+    if (this.categoryGuidanceEls) {
+      // Guidance for filling out the form only makes sense while the PI is
+      // first drafting it -- once it's returned for amendments, the same box
+      // already appears at the top of the page next to the reviewer feedback
+      // (renderPiCategoryGuidancePanel), so it isn't repeated down here too.
+      const url = this.currentRole === 'pi' && this.record.status === 'draft' ? pairAssistantUrlFor(this.record) : null;
+      this.categoryGuidanceEls.guidance.hidden = !url;
+      if (url) this.categoryGuidanceEls.link.href = url;
+    }
   }
 
   isRequired(field, data) {

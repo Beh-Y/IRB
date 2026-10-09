@@ -40,8 +40,27 @@ const CATEGORY_PAIR_ASSISTANT_LINKS = {
   Others: 'https://pair.gov.sg/chat?assistant=assistant_9ed66f9f-fa41-42fb-b18b-c8c4cd670de9',
 };
 
-// The guidance description + link, shared verbatim between the IRPF and
-// IPAF forms so the two never drift.
+// PCDF has no Category of Research field to key off, so it gets one flat
+// assistant link rather than the IRPF/IPAF's per-category split. Reuses the
+// same assistant as the "Others" category above as a placeholder -- swap in
+// a PCDF-specific assistant ID here once one exists.
+const PCDF_PAIR_ASSISTANT_LINK = 'https://pair.gov.sg/chat?assistant=assistant_9ed66f9f-fa41-42fb-b18b-c8c4cd670de9';
+
+// Picks the right Pair assistant link for a record's form type -- IRPF/IPAF
+// key off their (shared) Category of Research, PCDF always gets its one
+// flat link. Shared by the in-form drafting guidance box (built per-form in
+// each form.js) and the top-of-page renderPiCategoryGuidancePanel below.
+function pairAssistantUrlFor(record) {
+  if (record.formType === 'PCDF') return PCDF_PAIR_ASSISTANT_LINK;
+  return CATEGORY_PAIR_ASSISTANT_LINKS[record.data.categoryOfResearch];
+}
+
+// The guidance description + link, shared verbatim across all three forms
+// so they never drift. Kept category-agnostic in its wording -- IRPF/IPAF
+// tailor the actual link by Category of Research (see
+// CATEGORY_PAIR_ASSISTANT_LINKS above), but PCDF has no such field, so the
+// copy itself just says "this page" rather than promising category-specific
+// tailoring that wouldn't be true there.
 function buildCategoryGuidanceBox() {
   const guidance = document.createElement('div');
   guidance.className = 'category-guidance';
@@ -50,9 +69,8 @@ function buildCategoryGuidanceBox() {
   const desc = document.createElement('p');
   desc.className = 'triage-hint';
   desc.textContent =
-    'Get step-by-step guidance filling out this page, tailored to your selected research category, from the ' +
-    'SP IRB Pair Assistant — trained on relevant IRB knowledge, fine-tuned from past cases, and cleared to ' +
-    'handle data classified up to Restricted.';
+    'Get step-by-step guidance filling out this page from the SP IRB Pair Assistant — trained on relevant IRB ' +
+    'knowledge, fine-tuned from past cases, and cleared to handle data classified up to Restricted.';
   guidance.appendChild(desc);
 
   const link = document.createElement('a');
@@ -75,7 +93,7 @@ function renderPiCategoryGuidancePanel(record, role) {
   if (!container) return;
   container.innerHTML = '';
 
-  const url = role === 'pi' && record.status === 'for_revision' ? CATEGORY_PAIR_ASSISTANT_LINKS[record.data.categoryOfResearch] : null;
+  const url = role === 'pi' && record.status === 'for_revision' ? pairAssistantUrlFor(record) : null;
   if (!url) {
     container.hidden = true;
     return;

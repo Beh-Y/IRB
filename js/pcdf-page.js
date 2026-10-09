@@ -171,6 +171,7 @@ function initPcdfPage() {
   controller.mount(document.getElementById('pcdf-form-container'));
   renderActivityLog(record, role);
   renderCommentsPanel(controller);
+  renderPiCategoryGuidancePanel(record, role);
 
   const saveBtn = document.getElementById('btn-save');
   const submitBtn = document.getElementById('btn-submit');

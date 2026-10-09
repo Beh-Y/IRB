@@ -444,6 +444,13 @@ class IrpfFormController {
         grid.className = 'field-grid';
         section.fields.forEach((field) => {
           grid.appendChild(this.buildFieldRow(field));
+          // Placed as its own full-width row (see .category-guidance's
+          // grid-column rule) right after Category of Research's own row,
+          // rather than squeezed into that field's control column -- it
+          // needs the room a radio-button-width column can't give it.
+          if (field.id === 'categoryOfResearch' && this.categoryGuidanceEls) {
+            grid.appendChild(this.categoryGuidanceEls.guidance);
+          }
         });
         sectionEl.appendChild(grid);
       }
@@ -583,9 +590,11 @@ class IrpfFormController {
       });
       controlWrap.appendChild(group);
 
+      // Built here, but not appended here -- mount() places the actual
+      // guidance box as its own full-width row right after this one,
+      // instead of squeezed into this field's own control column.
       if (field.id === 'categoryOfResearch') {
         this.categoryGuidanceEls = buildCategoryGuidanceBox();
-        controlWrap.appendChild(this.categoryGuidanceEls.guidance);
       }
 
       return group;

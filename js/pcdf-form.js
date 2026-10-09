@@ -237,7 +237,10 @@ class PcdfFormController {
       // (renderPiCategoryGuidancePanel), so it isn't repeated down here too.
       const url = this.currentRole === 'pi' && this.record.status === 'draft' ? pairAssistantUrlFor(this.record) : null;
       this.categoryGuidanceEls.guidance.hidden = !url;
-      if (url) this.categoryGuidanceEls.link.href = url;
+      if (url) {
+        this.categoryGuidanceEls.link.href = url;
+        this.categoryGuidanceEls.setSource(this.record, this.currentRole);
+      }
     }
   }
 

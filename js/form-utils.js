@@ -55,6 +55,37 @@ function pairAssistantUrlFor(record) {
   return CATEGORY_PAIR_ASSISTANT_LINKS[record.data.categoryOfResearch];
 }
 
+/* Pair opens as a cold chat with no idea which record, category, or stage
+ * the PI is asking about -- there's no confirmed way to pre-seed its first
+ * message via URL, so instead this builds a short plain-text summary the PI
+ * can paste in themselves as their opening message. Deliberately uses the
+ * same blinded status label the PI already sees on their own badge
+ * (getStatusForViewer), not the raw internal status, and scrubs any staff
+ * identity out of the reviewer's comment (scrubStaffIdentities) -- this
+ * text leaves the app's own visibility rules behind once it's pasted
+ * somewhere else, so it needs to already be safe to paste. */
+function buildPairContextText(record, role) {
+  const lines = [`Form: ${record.formType}`, `Reference Number: ${(record.data && record.data.refNumber) || 'Not yet assigned'}`];
+
+  if (record.data && record.data.categoryOfResearch) {
+    lines.push(`Category of Research: ${record.data.categoryOfResearch}`);
+  }
+  if (record.data && record.data.projectTitle) {
+    lines.push(`Project Title: ${record.data.projectTitle}`);
+  }
+  lines.push(`Current Stage: ${getStatusLabel(getStatusForViewer(record, role), record.formType)}`);
+
+  if (record.status === 'for_revision') {
+    const lastReturn = [...(record.history || [])].reverse().find((h) => h.action === 'returned_for_amendments' && h.comment);
+    if (lastReturn) {
+      lines.push(`Reviewer's Comment to Address: ${scrubStaffIdentities(lastReturn.comment)}`);
+    }
+  }
+
+  lines.push('', "I'm working on this SP IRB submission and would like guidance.");
+  return lines.join('\n');
+}
+
 // The guidance description + link, shared verbatim across all three forms
 // so they never drift. Kept category-agnostic in its wording -- IRPF/IPAF
 // tailor the actual link by Category of Research (see
@@ -73,14 +104,70 @@ function buildCategoryGuidanceBox() {
     'knowledge, fine-tuned from past cases, and cleared to handle data classified up to Restricted.';
   guidance.appendChild(desc);
 
+  const actions = document.createElement('div');
+  actions.className = 'triage-actions';
+  guidance.appendChild(actions);
+
   const link = document.createElement('a');
   link.className = 'btn btn-secondary';
   link.target = '_blank';
   link.rel = 'noopener';
   link.textContent = 'Get Guidance from Pair Assistant';
-  guidance.appendChild(link);
+  actions.appendChild(link);
 
-  return { guidance, link };
+  // Pair opens with no context of its own, so this copies a short summary
+  // (reference number, category, stage, the reviewer's comment if any) to
+  // the clipboard first -- the PI pastes it as their opening message once
+  // Pair is open, instead of re-explaining their situation from scratch.
+  const copyBtn = document.createElement('button');
+  copyBtn.type = 'button';
+  copyBtn.className = 'btn btn-secondary';
+  copyBtn.textContent = 'Copy Context for Pair';
+  actions.appendChild(copyBtn);
+
+  const copyStatus = document.createElement('div');
+  copyStatus.className = 'field-hint';
+  copyStatus.hidden = true;
+  guidance.appendChild(copyStatus);
+
+  // Fallback for when the Clipboard API is unavailable or denied (e.g. a
+  // non-secure context, or a browser permission block) -- the PI can select
+  // and copy the same text manually instead.
+  const fallbackText = document.createElement('textarea');
+  fallbackText.rows = 4;
+  fallbackText.readOnly = true;
+  fallbackText.hidden = true;
+  guidance.appendChild(fallbackText);
+
+  let source = null;
+
+  copyBtn.addEventListener('click', async () => {
+    if (!source) return;
+    const text = buildPairContextText(source.record, source.role);
+    try {
+      await navigator.clipboard.writeText(text);
+      copyStatus.textContent = 'Copied! Paste it as your first message once Pair is open.';
+      fallbackText.hidden = true;
+    } catch (err) {
+      copyStatus.textContent = "Couldn't copy automatically -- select the text below and copy it manually.";
+      fallbackText.value = text;
+      fallbackText.hidden = false;
+      fallbackText.select();
+    }
+    copyStatus.hidden = false;
+  });
+
+  return {
+    guidance,
+    link,
+    // Called alongside setting link.href wherever this box is used, so the
+    // copy button always reflects whatever record/role it's currently
+    // showing for -- computed fresh at click time rather than baked in at
+    // render time, so it stays accurate even as the PI keeps editing fields.
+    setSource: (record, role) => {
+      source = { record, role };
+    },
+  };
 }
 
 // Shown just below the "Reviewer Feedback" panel once the PI gets a form
@@ -99,8 +186,9 @@ function renderPiCategoryGuidancePanel(record, role) {
     return;
   }
 
-  const { guidance, link } = buildCategoryGuidanceBox();
+  const { guidance, link, setSource } = buildCategoryGuidanceBox();
   link.href = url;
+  setSource(record, role);
   guidance.hidden = false;
   container.appendChild(guidance);
   container.hidden = false;

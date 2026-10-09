@@ -708,7 +708,10 @@ class IrpfFormController {
       const url =
         this.currentRole === 'pi' && this.record.status === 'draft' ? CATEGORY_PAIR_ASSISTANT_LINKS[data.categoryOfResearch] : null;
       this.categoryGuidanceEls.guidance.hidden = !url;
-      if (url) this.categoryGuidanceEls.link.href = url;
+      if (url) {
+        this.categoryGuidanceEls.link.href = url;
+        this.categoryGuidanceEls.setSource(this.record, this.currentRole);
+      }
     }
   }
 

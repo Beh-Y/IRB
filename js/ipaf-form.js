@@ -1,0 +1,1196 @@
+/*
+ * IPAF (IRB Protocol Application Form) document generation script.
+ * Renders the IPAF section-by-section from IPAF_SCHEMA and drives its
+ * Draft -> S/D Director Approval -> For Review -> Under Review -> IRB
+ * Leadership Approval -> (For Revision loop) -> Approved workflow, the same
+ * shape as the IRPF's minus the "To Create IPAF" outcome (there's no
+ * follow-on form for an IPAF to spawn). The Secretariat/member/leadership
+ * review logic (act on partial votes, keep re-deciding, stragglers can
+ * still vote even after the record moves on or gets routed back, an
+ * individual reviewer's own Return bypasses the Secretariat) mirrors the
+ * IRPF's throughout.
+ */
+
+class IpafFormController {
+  constructor(record, currentRole) {
+    this.record = record;
+    this.currentRole = currentRole;
+    this.fields = flattenFields(IPAF_SCHEMA);
+    this.fieldEls = {};
+    this.errors = {};
+  }
+
+  isEditableByPi() {
+    return this.currentRole === 'pi' && ['draft', 'for_revision'].includes(this.record.status);
+  }
+
+  isPendingThisDirectorApproval() {
+    return this.currentRole === 'sd-director' && this.record.status === 'pending_director_approval';
+  }
+
+  directorApprove() {
+    const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+    this.record.routedTo = secretariat;
+    this.record.status = 'pending_review';
+    saveSubmission(this.record, {
+      action: 'director_approve',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: `Auto-routed to ${getRoleLabel(secretariat)} based on Category of Research.`,
+    });
+    return { ok: true };
+  }
+
+  isPendingSecretariatTriage() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'pending_review' &&
+      this.record.routedTo === this.currentRole
+    );
+  }
+
+  getAssignedMembers() {
+    return this.record.assignedMembers || [];
+  }
+
+  /* The full "ever assigned" roster (see recordEverAssignedMembers in
+   * form-utils.js) -- everyone ever routed into this review, not just
+   * whoever the current round narrowed it down to. Falls back to the
+   * current round for a record saved before this field existed, where the
+   * two are the same anyway. Used to decide whether review is actually
+   * complete (see castVote's auto-route to Leadership below) -- a
+   * Secretariat re-route that drops a member down to just one specified
+   * reviewer shouldn't let that one reviewer's approval alone complete a
+   * review that other, still-assigned-in-spirit members never weighed in
+   * on. */
+  getEverAssignedMembers() {
+    const ever = this.record.everAssignedMembers;
+    return ever && ever.length > 0 ? ever : this.getAssignedMembers();
+  }
+
+  isAssignedMember() {
+    return isIrbMember(this.currentRole) && this.getAssignedMembers().includes(this.currentRole);
+  }
+
+  getVotes() {
+    return this.record.votes || [];
+  }
+
+  hasVoted(memberId) {
+    return this.getVotes().some((v) => v.voterId === memberId);
+  }
+
+  /* assignedTotal uses the full "ever assigned" roster (see
+   * getEverAssignedMembers), not just the current round's assignedMembers --
+   * otherwise a Secretariat re-route that narrows the panel down to one
+   * remaining reviewer (everyone else having already voted in an earlier
+   * round) would show "1 of 1 reviewed" instead of e.g. "1 of 2", losing
+   * track of how many were actually ever asked to weigh in. */
+  voteTally() {
+    const votes = this.getVotes();
+    return {
+      total: votes.length,
+      assignedTotal: this.getEverAssignedMembers().length,
+      approveCount: votes.filter((v) => v.decision === 'Approve').length,
+      returnCount: votes.filter((v) => v.decision === 'Return').length,
+      routeToSecretariatCount: votes.filter((v) => v.decision === 'Route to Secretariat').length,
+    };
+  }
+
+  getLeadershipApprovals() {
+    return this.record.leadershipApprovals || [];
+  }
+
+  hasLeadershipVoted(roleId) {
+    return this.getLeadershipApprovals().some((a) => a.approverId === roleId);
+  }
+
+  allLeadersVoted() {
+    return IRB_LEADERSHIP_IDS.every((id) => this.hasLeadershipVoted(id));
+  }
+
+  leadershipTally() {
+    const approvals = this.getLeadershipApprovals();
+    return {
+      total: approvals.length,
+      leadershipTotal: IRB_LEADERSHIP_IDS.length,
+      approveCount: approvals.filter((a) => a.decision === 'Approve').length,
+      returnCount: approvals.filter((a) => a.decision === 'Return').length,
+      routeToSecretariatCount: approvals.filter((a) => a.decision === 'Route to Secretariat').length,
+    };
+  }
+
+  /* A member can cast their vote as soon as they're assigned, whether or not
+   * the Secretariat has already acted on other members' votes and moved the
+   * record on -- their review still gets recorded either way. This holds
+   * even once it's been routed to Leadership or the PI has resubmitted and
+   * it's routed back to the Secretariat (pending_review): a straggler's
+   * vote still counts right up until the Secretariat re-triages and starts
+   * a fresh review cycle. */
+  isUnderReviewVotingOpenToMember() {
+    return (
+      this.isAssignedMember() &&
+      !this.hasVoted(this.currentRole) &&
+      (this.record.status === 'under_review' ||
+        (['for_revision', 'pending_leadership_approval', 'approved', 'pending_review'].includes(this.record.status) &&
+          this.getVotes().length > 0))
+    );
+  }
+
+  isUnassignedMemberViewingUnderReview() {
+    return isIrbMember(this.currentRole) && !this.isAssignedMember() && this.record.status === 'under_review';
+  }
+
+  /* Secretariat can act on the member panel as soon as any member has voted
+   * -- it doesn't wait for the rest -- and can keep acting on it (e.g.
+   * reconsider after a late vote) right up until it's routed to leadership
+   * or the PI resubmits. */
+  isPendingSecretariatUnderReviewAction() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.routedTo === this.currentRole &&
+      this.getVotes().length > 0 &&
+      this.getLeadershipApprovals().length === 0 &&
+      ['under_review', 'for_revision'].includes(this.record.status)
+    );
+  }
+
+  /* Same idea for leadership: a leader can still cast their vote even after
+   * the Secretariat has already recorded a final outcome based on the other
+   * leader's vote, and even after the PI has resubmitted and it's routed
+   * back to the Secretariat (pending_review). */
+  isPendingLeadershipApproval() {
+    return (
+      isIrbLeadership(this.currentRole) &&
+      !this.hasLeadershipVoted(this.currentRole) &&
+      (this.record.status === 'pending_leadership_approval' ||
+        (['approved', 'for_revision', 'pending_review'].includes(this.record.status) &&
+          this.getLeadershipApprovals().length > 0))
+    );
+  }
+
+  isLeadershipWaitingOnOther() {
+    return (
+      isIrbLeadership(this.currentRole) &&
+      this.record.status === 'pending_leadership_approval' &&
+      this.hasLeadershipVoted(this.currentRole) &&
+      !this.allLeadersVoted()
+    );
+  }
+
+  /* Secretariat can record the final outcome as soon as any leader has voted
+   * -- it doesn't wait for both -- and can keep re-deciding while the record
+   * is still in flux (a late vote comes in after an early "Returned for
+   * Amendments"). But once they Approve, the record has reached a true
+   * terminal state and the task is closed: this panel doesn't reopen. */
+  isPendingSecretariatCollation() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.routedTo === this.currentRole &&
+      this.getLeadershipApprovals().length > 0 &&
+      ['pending_leadership_approval', 'for_revision'].includes(this.record.status)
+    );
+  }
+
+  isAwaitingLeadershipApproval() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'pending_leadership_approval' &&
+      this.record.routedTo === this.currentRole &&
+      this.getLeadershipApprovals().length === 0
+    );
+  }
+
+  isAwaitingMemberReview() {
+    return (
+      isSecretariat(this.currentRole) &&
+      this.record.status === 'under_review' &&
+      this.record.routedTo === this.currentRole &&
+      this.getVotes().length === 0
+    );
+  }
+
+  isPendingAcknowledgement() {
+    return this.currentRole === 'pi' && this.record.status === 'approved' && !this.record.acknowledged;
+  }
+
+  /* decision is 'Approve', 'Return', or 'Route to Secretariat' -- the last
+   * one is a separate button (see ipaf-page.js), not a radio option: the
+   * member defers to the Secretariat instead of deciding Approve/Return
+   * themselves. It's recorded the same way a vote is (so it still counts
+   * toward hasVoted() and the "N of M voted" tally, and it's still shown in
+   * the Comments panel to staff), but it doesn't trigger the Return bypass
+   * below, and it's excluded from the PI's blinded feedback (see
+   * renderCommentsPanel in ipaf-page.js) since it's not review feedback. */
+  castVote(decision, comment) {
+    if (!this.isAssignedMember()) {
+      return { ok: false, error: 'This IPAF was not routed to you for review.' };
+    }
+    if (!decision) {
+      return { ok: false, error: 'Select Approve or Return.' };
+    }
+    if ((decision === 'Return' || decision === 'Route to Secretariat') && !(comment || '').trim()) {
+      return {
+        ok: false,
+        error:
+          decision === 'Return'
+            ? 'A comment is required when returning for amendments.'
+            : 'A comment is required when routing to the Secretariat.',
+      };
+    }
+    if (this.hasVoted(this.currentRole)) {
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IPAF.` };
+    }
+
+    this.record.votes = this.getVotes();
+    const vote = {
+      voterId: this.currentRole,
+      voterName: getRoleLabel(this.currentRole),
+      decision,
+      comment: (comment || '').trim(),
+      timestamp: new Date().toISOString(),
+    };
+    this.record.votes.push(vote);
+
+    let note = `${vote.voterName}: ${decision}${vote.comment ? ' — ' + vote.comment : ''}`;
+
+    /* A member's own "Return for Amendments" sends the IPAF straight back
+     * to the PI -- bypassing the Secretariat's usual collation step --
+     * rather than just being tallied for the Secretariat to act on later.
+     * Resubmission routes it back to this same member (see submit()). */
+    if (decision === 'Return') {
+      this.record.status = 'for_revision';
+      this.record.routedTo = this.currentRole;
+      note += ' Routed directly to the PI for amendments.';
+    } else if (
+      this.getEverAssignedMembers().length > 0 &&
+      this.getEverAssignedMembers().every((id) => this.record.votes.some((v) => v.voterId === id && v.decision === 'Approve'))
+    ) {
+      /* Every member ever assigned has now approved -- not just whoever the
+       * current round happens to be narrowed down to (see
+       * getEverAssignedMembers) -- so auto-route straight to the
+       * Co-Chairman and Chairman rather than waiting for the Secretariat to
+       * do it manually. Same effect as routeToLeadershipApproval() below,
+       * just triggered by the vote that completes the panel instead of a
+       * Secretariat click -- this takes priority over the member-bypass
+       * hand-back-to-Secretariat case right below, so a bypass round that
+       * ends in full approval (not just the returning member's own) also
+       * skips straight to Leadership instead of looping through the
+       * Secretariat once more. A round that only needed one specified
+       * reviewer's fresh approval, with other ever-assigned members still
+       * outstanding, falls through instead -- the Secretariat can still
+       * route to Leadership manually once that's the right call. */
+      const targets = IRB_LEADERSHIP_IDS;
+      this.record.status = 'pending_leadership_approval';
+      this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => !targets.includes(a.approverId));
+      this.record.routedTo = targets[0];
+      note += ` All assigned members approved -- automatically routed to ${targets.map((id) => getRoleLabel(id)).join(' and ')} for approval.`;
+    } else if (isIrbMember(this.record.routedTo) && this.record.status === 'under_review') {
+      /* This record is in a member bypass cycle -- routed straight back to
+       * whichever member(s) returned it, skipping the Secretariat -- and
+       * the PI has resubmitted (status moved to under_review; routedTo
+       * still names whichever member returned *last*, but every returning
+       * member gets a fresh vote, per submit() above). Checking the bypass
+       * is active + we're past resubmission, rather than requiring routedTo
+       * to name this exact member, means whichever one of them votes first
+       * still correctly hands it back to the Secretariat -- otherwise, if
+       * two members both returned and the "other" one (not the one
+       * routedTo happens to still point at) votes, the Secretariat's
+       * under-review action panel would never reopen. */
+      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+      this.record.routedTo = secretariat;
+      note += ` Routed back to ${getRoleLabel(secretariat)}.`;
+    }
+
+    saveSubmission(this.record, {
+      action: 'member_vote',
+      actor: this.currentRole,
+      status: this.record.status,
+      note,
+      decision,
+      comment: vote.comment,
+    });
+    return { ok: true };
+  }
+
+  /* Secretariat escalates to the Co-Chairman and Chairman -- either both
+   * (the usual case, e.g. after a unanimously-approved member panel), or
+   * just one of them (from the collate panel, to get a fresh decision from
+   * a specific leader without disturbing the other's). The Chairman and
+   * Co-Chairman are independent reviewers, same as IRB Members: only the
+   * leader(s) actually being (re-)routed to here get their existing
+   * approval cleared for a fresh vote -- the other keeps whatever decision
+   * they already made, and isn't asked to reconsider it. routedTo is
+   * pinned to one of the targeted leaders (any of them will do) purely so
+   * the existing hand-back-to-Secretariat logic in castLeadershipVote (see
+   * its comment) knows a leadership round is in progress and waits for a
+   * targeted leader to vote before reopening the Secretariat's own panel --
+   * without it, a leftover approval from the *other*, untouched leader
+   * would make it look like this round was already dealt with. */
+  routeToLeadershipApproval(comment, leaderIds) {
+    const targets = leaderIds && leaderIds.length > 0 ? leaderIds : IRB_LEADERSHIP_IDS;
+    this.record.status = 'pending_leadership_approval';
+    this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => !targets.includes(a.approverId));
+    this.record.routedTo = targets[0];
+    const leaderLabels = targets.map((id) => getRoleLabel(id)).join(' and ');
+    saveSubmission(this.record, {
+      action: 'routed_to_leadership',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment ? `${comment} Routed to: ${leaderLabels}.` : `Routed to ${leaderLabels} for approval.`,
+    });
+    return { ok: true };
+  }
+
+  /* Same three decisions as castVote -- see its comment for what 'Route to
+   * Secretariat' means and why it's handled the way it is. */
+  castLeadershipVote(decision, comment) {
+    if (!isIrbLeadership(this.currentRole)) {
+      return { ok: false, error: 'This IPAF was not routed to you for review.' };
+    }
+    if (!decision) {
+      return { ok: false, error: 'Select Approve or Return.' };
+    }
+    if ((decision === 'Return' || decision === 'Route to Secretariat') && !(comment || '').trim()) {
+      return {
+        ok: false,
+        error:
+          decision === 'Return'
+            ? 'A comment is required when returning for amendments.'
+            : 'A comment is required when routing to the Secretariat.',
+      };
+    }
+    if (this.hasLeadershipVoted(this.currentRole)) {
+      return { ok: false, error: `${getRoleLabel(this.currentRole)} has already reviewed this IPAF.` };
+    }
+
+    this.record.leadershipApprovals = this.getLeadershipApprovals();
+    const approval = {
+      approverId: this.currentRole,
+      approverName: getRoleLabel(this.currentRole),
+      decision,
+      comment: (comment || '').trim(),
+      timestamp: new Date().toISOString(),
+    };
+    this.record.leadershipApprovals.push(approval);
+
+    let note = `${approval.approverName}: ${decision}${approval.comment ? ' — ' + approval.comment : ''}`;
+
+    /* Same bypass as a member's return (see castVote): sends the IPAF
+     * straight back to the PI instead of waiting on the Secretariat's
+     * collation step. Resubmission routes it back to this same leader. */
+    if (decision === 'Return') {
+      this.record.status = 'for_revision';
+      this.record.routedTo = this.currentRole;
+      note += ' Routed directly to the PI for amendments.';
+    } else if (
+      this.record.leadershipApprovals.length === IRB_LEADERSHIP_IDS.length &&
+      this.record.leadershipApprovals.every((a) => a.decision === 'Approve')
+    ) {
+      /* Both leaders have now approved -- auto-finalize as Approved rather
+       * than waiting for the Secretariat's collate panel, same effect as
+       * approveIpaf() below, just triggered by the vote that completes
+       * leadership approval (unlike IRPF, there's no ambiguity here -- an
+       * IPAF's only outcomes are Approve/Return, so there's nothing left
+       * for the Secretariat to choose between). Recorded as the terminal
+       * 'approved' action (not 'leadership_vote') so it reads as the same
+       * milestone a Secretariat-clicked Approve would -- matters for the
+       * PI's limited Activity Log view (see IPAF_LIMITED_VISIBILITY_ACTIONS
+       * in ipaf-page.js) and for notifyByEmail's existing 'approved' case
+       * in email.js, both keyed off that action name. */
+      this.record.status = 'approved';
+      saveSubmission(this.record, {
+        action: 'approved',
+        actor: this.currentRole,
+        status: this.record.status,
+        note: `${note} Both leaders approved -- automatically finalized as Approved.`,
+      });
+      return { ok: true };
+    } else if (isIrbLeadership(this.record.routedTo) && this.record.status === 'pending_leadership_approval') {
+      /* Same hand-back as castVote's, and the same broadened check: a
+       * leadership bypass is active and the PI has resubmitted, regardless
+       * of whether routedTo currently names this exact leader -- both the
+       * Chairman and the Co-Chairman can each Return independently before
+       * the PI ever responds, and routedTo only ever remembers whichever
+       * one did so *last*. Whichever of them votes first here still
+       * correctly hands it back to the Secretariat so the collate panel
+       * reopens. */
+      const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+      this.record.routedTo = secretariat;
+      note += ` Routed back to ${getRoleLabel(secretariat)}.`;
+    }
+
+    saveSubmission(this.record, {
+      action: 'leadership_vote',
+      actor: this.currentRole,
+      status: this.record.status,
+      note,
+      decision,
+      comment: approval.comment,
+    });
+    return { ok: true };
+  }
+
+  /* Secretariat's action at For Review: send to the IRB Member panel.
+   * Clears any Leadership approvals left over from an earlier review cycle
+   * (e.g. the record was returned and resubmitted after already reaching
+   * Leadership) -- otherwise they'd linger and incorrectly block the
+   * Secretariat's own under-review action panel from opening once these
+   * fresh member votes come in, since that panel requires
+   * getLeadershipApprovals().length === 0. Member votes are cleared
+   * selectively, same as routeToMembersFromUnderReview/FromCollate below --
+   * only whoever is being (re-)assigned in this call gets a clean slate.
+   * Earlier than that fix, this cleared every vote unconditionally, which
+   * silently discarded an already-assigned member's standing approval the
+   * next time the Secretariat triaged a resubmission (e.g. after their own
+   * Return, or a different member's bypass cycle), even though that member
+   * never withdrew it -- making "every assigned member approved" never
+   * actually complete once a record went through more than one triage
+   * round. */
+  routeToMembersForReview(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
+    }
+    this.record.status = 'under_review';
+    recordEverAssignedMembers(this.record, assigned);
+    this.record.assignedMembers = assigned;
+    this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
+    this.record.leadershipApprovals = [];
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
+    saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for review: ${memberLabels}.`,
+    });
+    return { ok: true };
+  }
+
+  /* Secretariat can re-route to IRB Members from the under-review action
+   * panel without discarding votes already cast -- same selective clearing
+   * as routeToMembersForReview() above, just updating who's assigned so a
+   * straggler or an added member can weigh in. A member
+   * being (re-)assigned here always gets a clean slate, though: if they'd
+   * already voted (or deferred via Route to Secretariat) in an earlier
+   * round and are selected again, their stale vote would otherwise still
+   * count as "voted", permanently hiding this from their Pending My Action
+   * and blocking their vote panel from ever reopening for them. */
+  routeToMembersFromUnderReview(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
+    }
+    recordEverAssignedMembers(this.record, assigned);
+    this.record.assignedMembers = assigned;
+    this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
+    this.record.status = 'under_review';
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
+    saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment ? `${comment} Routed to: ${memberLabels}.` : `Routed to the IRB Member panel for review: ${memberLabels}.`,
+    });
+    return { ok: true };
+  }
+
+  /* Secretariat can send a collated IPAF (Leadership has already voted) back
+   * to the IRB Member panel -- e.g. if Leadership's decision surfaces a gap
+   * that needs fresh member input. Leadership approvals are discarded,
+   * since they'd need to vote again once it gets back to them; existing
+   * member votes are kept, same as routeToMembersFromUnderReview() -- including
+   * its same fix: a member being (re-)assigned here always gets a clean
+   * slate, so a stale vote from an earlier round can't keep hiding this
+   * from their Pending My Action. */
+  routeToMembersFromCollate(comment, memberIds) {
+    const assigned = memberIds || [];
+    if (assigned.length === 0) {
+      return { ok: false, error: 'Select at least one IRB Member to route this IPAF to.' };
+    }
+    recordEverAssignedMembers(this.record, assigned);
+    this.record.assignedMembers = assigned;
+    this.record.votes = this.getVotes().filter((v) => !assigned.includes(v.voterId));
+    this.record.leadershipApprovals = [];
+    this.record.status = 'under_review';
+    const memberLabels = assigned.map((id) => getRoleLabel(id)).join(', ');
+    saveSubmission(this.record, {
+      action: 'routed_to_members',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment
+        ? `${comment} Routed to: ${memberLabels}. Leadership approvals cleared.`
+        : `Routed to the IRB Member panel for review: ${memberLabels}. Leadership approvals cleared.`,
+    });
+    return { ok: true };
+  }
+
+  approveIpaf(comment) {
+    this.record.status = 'approved';
+    saveSubmission(this.record, {
+      action: 'approved',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment || 'Approved.',
+    });
+    return { ok: true };
+  }
+
+  returnForAmendments(comment) {
+    if (!comment || !comment.trim()) {
+      return { ok: false, error: 'A comment is required so the PI knows what to amend.' };
+    }
+    this.record.status = 'for_revision';
+    // Records who this needs to come back to on resubmission -- submit()
+    // branches on this. A no-op for the existing Secretariat-triggered
+    // callers (routedTo is already their own id by the time they can call
+    // this), but necessary now that the S/D Director can also call this
+    // from the first gate, before routedTo has ever been set to anyone.
+    this.record.routedTo = this.currentRole;
+    saveSubmission(this.record, {
+      action: 'returned_for_amendments',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: comment.trim(),
+      decision: 'Returned for Amendments',
+      comment: comment.trim(),
+    });
+    return { ok: true };
+  }
+
+  acknowledge() {
+    this.record.acknowledged = true;
+    this.record.acknowledgedAt = new Date().toISOString();
+    saveSubmission(this.record, {
+      action: 'acknowledged',
+      actor: this.currentRole,
+      status: this.record.status,
+      note: 'PI acknowledged their responsibilities.',
+    });
+    return { ok: true };
+  }
+
+  getData() {
+    return this.record.data;
+  }
+
+  mount(container) {
+    container.innerHTML = '';
+    IPAF_SCHEMA.forEach((section) => {
+      const sectionEl = document.createElement('section');
+      sectionEl.className = 'form-section';
+
+      const heading = document.createElement('h2');
+      heading.textContent = section.title;
+      sectionEl.appendChild(heading);
+
+      if (section.intro) {
+        const list = document.createElement('ul');
+        list.className = 'section-intro';
+        section.intro.forEach((line) => {
+          const li = document.createElement('li');
+          li.textContent = line;
+          list.appendChild(li);
+        });
+        sectionEl.appendChild(list);
+      }
+
+      if (section.singleColumn) {
+        section.fields.forEach((field) => {
+          sectionEl.appendChild(this.buildFieldRow(field));
+        });
+      } else {
+        const grid = document.createElement('div');
+        grid.className = 'field-grid';
+        section.fields.forEach((field) => {
+          grid.appendChild(this.buildFieldRow(field));
+        });
+        sectionEl.appendChild(grid);
+      }
+
+      if (section.id === 'projectDetails') {
+        // The IPAF has no Category of Research field of its own -- it's
+        // carried straight from the parent IRPF at creation (see
+        // createChildIpaf) -- so the guidance box sits here, next to that
+        // form's other carried-over fields, rather than beside a selector.
+        this.categoryGuidanceEls = buildCategoryGuidanceBox();
+        sectionEl.appendChild(this.categoryGuidanceEls.guidance);
+      }
+
+      container.appendChild(sectionEl);
+    });
+
+    this.refreshAll();
+  }
+
+  buildFieldRow(field) {
+    const row = document.createElement('div');
+    row.className = isFullWidthField(field) ? 'field-row field-row--full' : 'field-row';
+    row.dataset.fieldId = field.id;
+
+    const labelWrap = document.createElement('div');
+    labelWrap.className = 'field-label';
+    const label = document.createElement('label');
+    label.textContent = field.label + (field.required || field.requiredIf ? ' *' : '');
+    label.setAttribute('for', field.id);
+    labelWrap.appendChild(label);
+
+    if (field.info) {
+      const info = document.createElement('span');
+      info.className = 'info-icon';
+      info.textContent = 'i';
+      info.tabIndex = 0;
+      info.title = field.info;
+      labelWrap.appendChild(info);
+    }
+
+    row.appendChild(labelWrap);
+
+    const controlWrap = document.createElement('div');
+    controlWrap.className = 'field-control';
+    const input = this.buildControl(field, controlWrap);
+
+    let pairSuggestionEl = null;
+    if (field.pairPasteable && input.tagName === 'TEXTAREA' && !input.disabled) {
+      controlWrap.appendChild(buildPasteFromPairButton(input, () => this.onFieldChanged(field)));
+    } else if (field.pairPasteable && (field.type === 'yesno' || field.type === 'yesna' || field.type === 'radio')) {
+      const radios = Array.from(input.querySelectorAll('input[type="radio"]'));
+      if (radios.length > 0 && !radios[0].disabled) {
+        pairSuggestionEl = document.createElement('div');
+        pairSuggestionEl.className = 'pair-suggestion';
+        pairSuggestionEl.hidden = true;
+        controlWrap.appendChild(pairSuggestionEl);
+        // A suggestion the PI hasn't acted on yet shouldn't linger once
+        // they've answered the question themselves -- whether that's
+        // clicking Apply (handled in renderPairSuggestion) or just picking
+        // an option directly, same as always.
+        radios.forEach((radio) => {
+          radio.addEventListener('change', () => {
+            pairSuggestionEl.hidden = true;
+          });
+        });
+      }
+    }
+
+    const hintEl = document.createElement('div');
+    hintEl.className = 'field-hint';
+    controlWrap.appendChild(hintEl);
+
+    const errorEl = document.createElement('div');
+    errorEl.className = 'field-error';
+    controlWrap.appendChild(errorEl);
+
+    row.appendChild(controlWrap);
+
+    this.fieldEls[field.id] = { row, input, hintEl, errorEl, pairSuggestionEl };
+    return row;
+  }
+
+  buildControl(field, controlWrap) {
+    const disabled = !this.isEditableByPi();
+    const currentValue = this.record.data[field.id];
+
+    if (field.type === 'display') {
+      const div = document.createElement('div');
+      div.className = 'field-display';
+      div.id = field.id;
+      div.textContent = currentValue || '—';
+      controlWrap.appendChild(div);
+      return div;
+    }
+
+    if (field.type === 'text') {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.id = field.id;
+      input.value = currentValue || '';
+      input.disabled = disabled;
+      input.addEventListener('input', () => this.onFieldChanged(field));
+      controlWrap.appendChild(input);
+      return input;
+    }
+
+    if (field.type === 'textarea') {
+      const textarea = document.createElement('textarea');
+      textarea.id = field.id;
+      textarea.rows = 4;
+      textarea.value = currentValue || '';
+      textarea.disabled = disabled;
+      textarea.addEventListener('input', () => this.onFieldChanged(field));
+      controlWrap.appendChild(textarea);
+      return textarea;
+    }
+
+    if (field.type === 'yesno') {
+      const options = field.options || ['Yes', 'No'];
+      const group = document.createElement('div');
+      group.className = 'radio-group';
+      options.forEach((opt) => {
+        const optLabel = document.createElement('label');
+        optLabel.className = 'radio-option';
+        const radio = document.createElement('input');
+        radio.type = 'radio';
+        radio.name = field.id;
+        radio.value = opt;
+        radio.checked = currentValue === opt;
+        radio.disabled = disabled;
+        radio.addEventListener('change', () => this.onFieldChanged(field));
+        optLabel.appendChild(radio);
+        optLabel.appendChild(document.createTextNode(' ' + opt));
+        group.appendChild(optLabel);
+      });
+      controlWrap.appendChild(group);
+      return group;
+    }
+
+    if (field.type === 'checkbox-group') {
+      const group = document.createElement('div');
+      group.className = 'checkbox-group stacked';
+      const selected = Array.isArray(currentValue) ? currentValue : [];
+      (field.options || []).forEach((opt) => {
+        const optLabel = document.createElement('label');
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = opt;
+        checkbox.checked = selected.includes(opt);
+        checkbox.disabled = disabled;
+        checkbox.addEventListener('change', () => this.onFieldChanged(field));
+        optLabel.appendChild(checkbox);
+        optLabel.appendChild(document.createTextNode(' ' + opt));
+        group.appendChild(optLabel);
+      });
+      controlWrap.appendChild(group);
+      return group;
+    }
+
+    if (field.type === 'checkbox') {
+      const optLabel = document.createElement('label');
+      optLabel.className = 'radio-option';
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = field.id;
+      checkbox.checked = currentValue === true;
+      checkbox.disabled = disabled;
+      checkbox.addEventListener('change', () => this.onFieldChanged(field));
+      optLabel.appendChild(checkbox);
+      optLabel.appendChild(document.createTextNode(' I agree'));
+      controlWrap.appendChild(optLabel);
+      return checkbox;
+    }
+
+    if (field.type === 'people-list') {
+      const wrap = document.createElement('div');
+      wrap.className = 'people-list';
+      wrap.id = `${field.id}-list`;
+      this.renderPeopleList(field, wrap);
+      controlWrap.appendChild(wrap);
+
+      if (!disabled) {
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'btn btn-secondary btn-small';
+        addBtn.textContent = 'Add Team Members';
+        addBtn.addEventListener('click', () => this.addPerson(field));
+        controlWrap.appendChild(addBtn);
+      }
+      return wrap;
+    }
+
+    if (field.type === 'file') {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.id = field.id;
+      input.multiple = !!field.multiple;
+      input.accept = field.accept || '';
+      input.disabled = disabled;
+      input.addEventListener('change', () => this.onFileChanged(field, input));
+      controlWrap.appendChild(input);
+
+      const list = document.createElement('ul');
+      list.className = 'file-list';
+      list.id = `${field.id}-list`;
+      this.renderFileList(field, list);
+      controlWrap.appendChild(list);
+      return input;
+    }
+
+    return null;
+  }
+
+  renderPeopleList(field, wrap) {
+    const disabled = !this.isEditableByPi();
+    const people = this.record.data[field.id] || [];
+    wrap.innerHTML = '';
+    people.forEach((person, index) => {
+      const card = document.createElement('div');
+      card.className = 'person-card';
+
+      [
+        ['name', 'Name'],
+        ['role', 'Role', 'e.g. Principal Investigator, Co-Investigator, Research Assistant'],
+        ['schoolDept', 'School/Department'],
+        ['contact', 'Contact'],
+        ['email', 'Email'],
+      ].forEach(([key, label, placeholder]) => {
+        const fieldRow = document.createElement('div');
+        fieldRow.className = 'person-field-row';
+
+        const fieldLabel = document.createElement('label');
+        fieldLabel.textContent = label;
+        fieldRow.appendChild(fieldLabel);
+
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.placeholder = placeholder || label;
+        input.value = person[key] || '';
+        input.disabled = disabled;
+        input.addEventListener('input', () => {
+          people[index] = { ...people[index], [key]: input.value };
+          this.record.data[field.id] = people;
+        });
+        fieldRow.appendChild(input);
+
+        card.appendChild(fieldRow);
+      });
+
+      if (!disabled) {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'file-remove-btn';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => {
+          people.splice(index, 1);
+          this.record.data[field.id] = people;
+          this.renderPeopleList(field, wrap);
+          this.refreshAll();
+        });
+        card.appendChild(removeBtn);
+      }
+
+      wrap.appendChild(card);
+    });
+  }
+
+  addPerson(field) {
+    const people = this.record.data[field.id] || [];
+    people.push({ name: '', role: '', schoolDept: '', contact: '', email: '' });
+    this.record.data[field.id] = people;
+    this.renderPeopleList(field, document.getElementById(`${field.id}-list`));
+    this.refreshAll();
+  }
+
+  /* Files already recorded for this field. Every role can click a file to
+   * view/download it; only the PI (while editing) gets the Remove link. */
+  renderFileList(field, list) {
+    const disabled = !this.isEditableByPi();
+    list.innerHTML = '';
+    (this.record.data[field.id] || []).forEach((f, index) => {
+      const li = document.createElement('li');
+      const label = `${f.name} (${Math.round(f.size / 1024)} KB)`;
+      if (f.dataUrl) {
+        const link = document.createElement('a');
+        link.href = f.dataUrl;
+        link.download = f.name;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        link.textContent = label;
+        li.appendChild(link);
+      } else {
+        li.appendChild(
+          document.createTextNode(`${label} — uploaded before file previews were supported; no content to open`)
+        );
+      }
+      if (!disabled) {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.className = 'file-remove-btn';
+        removeBtn.textContent = 'Remove';
+        removeBtn.addEventListener('click', () => this.removeFile(field, index));
+        li.appendChild(removeBtn);
+      }
+      list.appendChild(li);
+    });
+  }
+
+  removeFile(field, index) {
+    const files = this.record.data[field.id] || [];
+    files.splice(index, 1);
+    this.record.data[field.id] = files;
+    this.renderFileList(field, document.getElementById(`${field.id}-list`));
+    this.refreshAll();
+  }
+
+  async onFileChanged(field, input) {
+    const els = this.fieldEls[field.id];
+    const selected = Array.from(input.files);
+    const tooBig = selected.filter((f) => f.size > MAX_FILE_SIZE_BYTES);
+    const okFiles = selected.filter((f) => f.size <= MAX_FILE_SIZE_BYTES);
+
+    if (els) {
+      els.errorEl.textContent = tooBig.length
+        ? `${tooBig.map((f) => f.name).join(', ')} — over the ${MAX_FILE_SIZE_BYTES / (1024 * 1024)}MB limit, not added.`
+        : '';
+    }
+
+    const newFiles = await Promise.all(okFiles.map(readFileAsDataUrl));
+    const existing = this.record.data[field.id] || [];
+    const merged = field.multiple ? existing.slice() : [];
+    newFiles.forEach((f) => {
+      if (!merged.some((m) => m.name === f.name && m.size === f.size)) merged.push(f);
+    });
+    this.record.data[field.id] = merged;
+    input.value = '';
+
+    this.renderFileList(field, document.getElementById(`${field.id}-list`));
+    this.refreshAll();
+  }
+
+  onFieldChanged(field) {
+    const els = this.fieldEls[field.id];
+    let value = null;
+    if (field.type === 'text' || field.type === 'textarea') {
+      value = els.input.value;
+    } else if (field.type === 'yesno') {
+      const checked = els.input.querySelector('input[type="radio"]:checked');
+      value = checked ? checked.value : null;
+    } else if (field.type === 'checkbox-group') {
+      value = Array.from(els.input.querySelectorAll('input[type="checkbox"]:checked')).map((c) => c.value);
+    } else if (field.type === 'checkbox') {
+      value = els.input.checked;
+    }
+    this.record.data[field.id] = value;
+    this.refreshAll();
+  }
+
+  refreshAll() {
+    const data = this.record.data;
+    this.fields.forEach((field) => {
+      const els = this.fieldEls[field.id];
+      if (!els) return;
+
+      const visible = field.visibleIf ? !!field.visibleIf(data) : true;
+      els.row.hidden = !visible;
+      if (!visible) return;
+
+      if (field.maxWords) {
+        const value = typeof data[field.id] === 'string' ? data[field.id] : '';
+        els.hintEl.textContent = `${countWords(value)} / ${field.maxWords} words${field.hint ? ' — ' + field.hint : ''}`;
+      } else if (field.hint) {
+        els.hintEl.textContent = field.hint;
+      } else {
+        els.hintEl.textContent = '';
+      }
+    });
+
+    if (this.categoryGuidanceEls) {
+      // Guidance for filling out the form only makes sense while the PI is
+      // first drafting it -- once it's returned for amendments, the same box
+      // already appears at the top of the page next to the reviewer feedback
+      // (renderPiCategoryGuidancePanel), so it isn't repeated down here too.
+      const url =
+        this.currentRole === 'pi' && this.record.status === 'draft' ? CATEGORY_PAIR_ASSISTANT_LINKS[data.categoryOfResearch] : null;
+      this.categoryGuidanceEls.guidance.hidden = !url;
+      if (url) {
+        this.categoryGuidanceEls.setUrl(url);
+        this.categoryGuidanceEls.setSource(this.record, this.currentRole);
+        this.categoryGuidanceEls.setFillTargets(buildPairFillTargets(this));
+      }
+    }
+  }
+
+  isRequired(field, data) {
+    if (field.required) return true;
+    if (field.requiredIf) return !!field.requiredIf(data);
+    return false;
+  }
+
+  isVisible(field, data) {
+    return field.visibleIf ? !!field.visibleIf(data) : true;
+  }
+
+  validateAll() {
+    const data = this.record.data;
+    const errors = {};
+
+    this.fields.forEach((field) => {
+      if (!this.isVisible(field, data)) return;
+      const value = data[field.id];
+      const isEmpty =
+        value === undefined ||
+        value === null ||
+        value === '' ||
+        (Array.isArray(value) && value.length === 0) ||
+        (field.type === 'checkbox' && value !== true);
+
+      if (this.isRequired(field, data) && isEmpty) {
+        errors[field.id] = field.type === 'checkbox' ? 'You must agree to continue.' : 'This field is required.';
+        return;
+      }
+
+      if (isEmpty) return;
+
+      if (field.mustEqual !== undefined && value !== field.mustEqual) {
+        errors[field.id] = 'You must agree to continue.';
+        return;
+      }
+
+      if (field.maxWords && typeof value === 'string' && countWords(value) > field.maxWords) {
+        errors[field.id] = `Exceeds maximum of ${field.maxWords} words.`;
+        return;
+      }
+    });
+
+    return errors;
+  }
+
+  renderErrors(errors) {
+    this.fields.forEach((field) => {
+      const els = this.fieldEls[field.id];
+      if (!els) return;
+      els.errorEl.textContent = errors[field.id] || '';
+      els.row.classList.toggle('has-error', !!errors[field.id]);
+    });
+  }
+
+  /* Reference numbers are assigned on first Submit, not on Save -- matching
+   * the IRPF's own timing, even though the IPAF doesn't burn a counter of
+   * its own (it mirrors the parent IRPF's number, carried over at creation
+   * as irpfReferenceNumber, plus a category suffix) -- so a draft that's
+   * saved but never submitted doesn't show a reference number prematurely. */
+  assignRefNumber() {
+    if (!this.record.data.refNumber) {
+      this.record.data.refNumber = generateIPAFReferenceNumber(
+        this.record.data.irpfReferenceNumber,
+        this.record.data.categoryOfResearch
+      );
+      const displayEl = this.fieldEls.refNumber && this.fieldEls.refNumber.input;
+      if (displayEl) displayEl.textContent = this.record.data.refNumber;
+    }
+  }
+
+  save() {
+    saveSubmission(this.record, { action: 'save', actor: this.currentRole, status: this.record.status });
+    return { ok: true };
+  }
+
+  /* target only matters on a resubmission (wasForRevision): 'reviewer' sends
+   * it back to the specific IRB Member/Leadership member who bypassed the
+   * Secretariat to return it (reopening just their vote); anything else
+   * (including the default, when there's no such reviewer to choose) sends
+   * it to the Secretariat instead, leaving any existing votes/approvals
+   * untouched. See castVote/castLeadershipVote for the bypass itself. */
+  submit(comment, target) {
+    const errors = this.validateAll();
+    this.renderErrors(errors);
+    if (Object.keys(errors).length > 0) {
+      return { ok: false, errors };
+    }
+
+    this.assignRefNumber();
+    this.record.data.piSubmissionDate = formatDateDDMMMYYYY(new Date());
+    const piDateEl = this.fieldEls.piSubmissionDate && this.fieldEls.piSubmissionDate.input;
+    if (piDateEl) piDateEl.textContent = this.record.data.piSubmissionDate;
+
+    const wasForRevision = this.record.status === 'for_revision';
+
+    if (wasForRevision) {
+      const returningReviewer = this.record.routedTo;
+      const returnedByMember = isIrbMember(returningReviewer);
+      const returnedByLeader = isIrbLeadership(returningReviewer);
+      const returnedByDirector = returningReviewer === 'sd-director';
+
+      if (returnedByDirector) {
+        // The S/D Director is the first gate, before the Secretariat or
+        // either review panel is ever involved -- a return from here goes
+        // straight back to the Director for a fresh decision, not through
+        // any of the bypass/Secretariat routing below.
+        this.record.status = 'pending_director_approval';
+        const routedNote = 'Resubmitted and routed to the S/D Director for approval.';
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+          decision: 'Resubmitted',
+          comment: (comment || '').trim(),
+        });
+      } else if ((returnedByMember || returnedByLeader) && target === 'reviewer') {
+        if (returnedByMember) {
+          // Every member with a live Return on record gets a clean slate --
+          // not just whichever one routedTo happens to still point at. Two
+          // members can each Return their own feedback before the PI ever
+          // responds (routedTo only ever holds the *last* one), and the PI's
+          // combined answer is meant to go back to all of them, not just one.
+          const returningMembers = this.getVotes()
+            .filter((v) => v.decision === 'Return')
+            .map((v) => v.voterId);
+          this.record.votes = this.getVotes().filter((v) => v.decision !== 'Return');
+          this.record.status = 'under_review';
+          const routedNote = `Resubmitted and routed back to ${returningMembers.map((id) => getRoleLabel(id)).join(', ')} for review.`;
+          const commentPrefix = comment && comment.trim() ? `${comment.trim()} — ` : '';
+          saveSubmission(this.record, {
+            action: 'resubmit',
+            actor: this.currentRole,
+            status: this.record.status,
+            note: `${commentPrefix}${routedNote}`,
+            // Naming each returning member (possibly more than one, which
+            // scrubStaffIdentities would otherwise turn into an awkward,
+            // repetitive "an IRB Member, an IRB Member") isn't meant for the
+            // PI -- a plain "routed for review" says everything they need.
+            blindedNote: `${commentPrefix}Resubmitted and routed for review.`,
+            decision: 'Resubmitted',
+            comment: (comment || '').trim(),
+          });
+        } else {
+          // Same fix as above, for Leadership: both the Chairman and the
+          // Co-Chairman can each Return independently before the PI
+          // responds, and both need to see this as their pending action
+          // again once resubmitted -- not just whichever one returned last.
+          const returningLeaders = this.getLeadershipApprovals()
+            .filter((a) => a.decision === 'Return')
+            .map((a) => a.approverId);
+          this.record.leadershipApprovals = this.getLeadershipApprovals().filter((a) => a.decision !== 'Return');
+          this.record.status = 'pending_leadership_approval';
+          const routedNote = `Resubmitted and routed back to ${returningLeaders.map((id) => getRoleLabel(id)).join(', ')} for approval.`;
+          const commentPrefix = comment && comment.trim() ? `${comment.trim()} — ` : '';
+          saveSubmission(this.record, {
+            action: 'resubmit',
+            actor: this.currentRole,
+            status: this.record.status,
+            note: `${commentPrefix}${routedNote}`,
+            blindedNote: `${commentPrefix}Resubmitted and routed for approval.`,
+            decision: 'Resubmitted',
+            comment: (comment || '').trim(),
+          });
+        }
+      } else {
+        // Submit to Secretariat -- either it was the Secretariat's own
+        // return, or the PI chose to loop the Secretariat in instead of the
+        // specific reviewer who bypassed them. Either way, any existing
+        // votes/approvals are left exactly as they are.
+        const secretariat = secretariatRoleForCategory(this.record.data.categoryOfResearch);
+        this.record.routedTo = secretariat;
+        this.record.status = 'pending_review';
+        const routedNote = `Resubmitted and routed to ${getRoleLabel(secretariat)}.`;
+        saveSubmission(this.record, {
+          action: 'resubmit',
+          actor: this.currentRole,
+          status: this.record.status,
+          note: comment && comment.trim() ? `${comment.trim()} — ${routedNote}` : routedNote,
+          decision: 'Resubmitted',
+          comment: (comment || '').trim(),
+        });
+      }
+    } else {
+      this.record.status = 'pending_director_approval';
+      saveSubmission(this.record, {
+        action: 'submit',
+        actor: this.currentRole,
+        status: this.record.status,
+        note: 'Routed to S/D Director for approval.',
+      });
+    }
+
+    return { ok: true };
+  }
+}

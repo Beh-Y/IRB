@@ -104,6 +104,17 @@ function buildCategoryGuidanceBox() {
     'knowledge, fine-tuned from past cases, and cleared to handle data classified up to Restricted.';
   guidance.appendChild(desc);
 
+  // Pair is a whole-of-government tool, not part of this app -- it won't
+  // load at all unless the access conditions below are actually met, so
+  // this needs to be seen before the PI clicks through to it, not
+  // discovered as a dead page afterward.
+  const accessNote = document.createElement('p');
+  accessNote.className = 'category-guidance-note';
+  accessNote.textContent =
+    'Pair is only accessible to public officers, on a supported device, connected to the SP Staff wifi (or an ' +
+    'equivalent authorised network). The page will not load otherwise.';
+  guidance.appendChild(accessNote);
+
   const actions = document.createElement('div');
   actions.className = 'triage-actions';
   guidance.appendChild(actions);

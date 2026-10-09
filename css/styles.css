@@ -706,6 +706,15 @@ body {
   margin-bottom: 0.6rem;
 }
 
+.category-guidance-note {
+  font-size: 0.78rem;
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
+  border-radius: 4px;
+  padding: 0.45rem 0.6rem;
+  margin: 0 0 0.6rem;
+}
+
 .file-list {
   margin: 0.4rem 0 0;
   padding-left: 1.1rem;

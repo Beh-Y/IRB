@@ -108,22 +108,18 @@ function buildCategoryGuidanceBox() {
   actions.className = 'triage-actions';
   guidance.appendChild(actions);
 
-  const link = document.createElement('a');
-  link.className = 'btn btn-secondary';
-  link.target = '_blank';
-  link.rel = 'noopener';
-  link.textContent = 'Get Guidance from Pair Assistant';
-  actions.appendChild(link);
-
-  // Pair opens with no context of its own, so this copies a short summary
-  // (reference number, category, stage, the reviewer's comment if any) to
-  // the clipboard first -- the PI pastes it as their opening message once
-  // Pair is open, instead of re-explaining their situation from scratch.
-  const copyBtn = document.createElement('button');
-  copyBtn.type = 'button';
-  copyBtn.className = 'btn btn-secondary';
-  copyBtn.textContent = 'Copy Context for Pair';
-  actions.appendChild(copyBtn);
+  // One button, two things happening on the same click: opens Pair in a new
+  // tab AND copies the context summary to the clipboard, so the only manual
+  // step left for the PI is pasting it as their opening message. There's no
+  // way to go further than that and have Pair's own input field fill itself
+  // in -- once that tab is open it's a different origin, and no script on
+  // this page can reach into another site's page to type into it; that's a
+  // browser security boundary, not something specific to Pair.
+  const openBtn = document.createElement('button');
+  openBtn.type = 'button';
+  openBtn.className = 'btn btn-secondary';
+  openBtn.textContent = 'Get Guidance from Pair Assistant';
+  actions.appendChild(openBtn);
 
   const copyStatus = document.createElement('div');
   copyStatus.className = 'field-hint';
@@ -132,7 +128,7 @@ function buildCategoryGuidanceBox() {
 
   // Fallback for when the Clipboard API is unavailable or denied (e.g. a
   // non-secure context, or a browser permission block) -- the PI can select
-  // and copy the same text manually instead.
+  // and copy the same text manually instead. The tab still opens either way.
   const fallbackText = document.createElement('textarea');
   fallbackText.rows = 4;
   fallbackText.readOnly = true;
@@ -140,30 +136,50 @@ function buildCategoryGuidanceBox() {
   guidance.appendChild(fallbackText);
 
   let source = null;
+  let url = null;
 
-  copyBtn.addEventListener('click', async () => {
+  openBtn.addEventListener('click', () => {
+    if (!url) return;
+    // Opened synchronously, before any await -- a window.open() called
+    // after an awaited clipboard call is liable to get blocked as an
+    // unrequested popup, since by then the browser no longer considers it
+    // part of the same user gesture. This still runs first in direct
+    // response to the click, so it's always allowed.
+    window.open(url, '_blank', 'noopener');
+
     if (!source) return;
     const text = buildPairContextText(source.record, source.role);
-    try {
-      await navigator.clipboard.writeText(text);
-      copyStatus.textContent = 'Copied! Paste it as your first message once Pair is open.';
-      fallbackText.hidden = true;
-    } catch (err) {
-      copyStatus.textContent = "Couldn't copy automatically -- select the text below and copy it manually.";
-      fallbackText.value = text;
-      fallbackText.hidden = false;
-      fallbackText.select();
-    }
-    copyStatus.hidden = false;
+    navigator.clipboard
+      .writeText(text)
+      .then(() => {
+        copyStatus.textContent = 'Opened Pair in a new tab, and copied your context -- paste it as your first message there.';
+        fallbackText.hidden = true;
+      })
+      .catch(() => {
+        copyStatus.textContent =
+          "Opened Pair in a new tab. Couldn't copy your context automatically -- select the text below and paste it there.";
+        fallbackText.value = text;
+        fallbackText.hidden = false;
+        fallbackText.select();
+      })
+      .finally(() => {
+        copyStatus.hidden = false;
+      });
   });
 
   return {
     guidance,
-    link,
-    // Called alongside setting link.href wherever this box is used, so the
-    // copy button always reflects whatever record/role it's currently
-    // showing for -- computed fresh at click time rather than baked in at
-    // render time, so it stays accurate even as the PI keeps editing fields.
+    // Called alongside setSource wherever this box is used, so the button
+    // always opens whatever assistant link currently applies (it can change
+    // -- e.g. IRPF's link depends on whichever Category of Research the PI
+    // has selected) without needing a live <a href> to read it from.
+    setUrl: (u) => {
+      url = u;
+    },
+    // Called alongside setUrl, so the copied context always reflects
+    // whatever record/role it's currently showing for -- computed fresh at
+    // click time rather than baked in at render time, so it stays accurate
+    // even as the PI keeps editing fields.
     setSource: (record, role) => {
       source = { record, role };
     },
@@ -186,8 +202,8 @@ function renderPiCategoryGuidancePanel(record, role) {
     return;
   }
 
-  const { guidance, link, setSource } = buildCategoryGuidanceBox();
-  link.href = url;
+  const { guidance, setUrl, setSource } = buildCategoryGuidanceBox();
+  setUrl(url);
   setSource(record, role);
   guidance.hidden = false;
   container.appendChild(guidance);

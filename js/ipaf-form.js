@@ -969,7 +969,7 @@ class IpafFormController {
         this.currentRole === 'pi' && this.record.status === 'draft' ? CATEGORY_PAIR_ASSISTANT_LINKS[data.categoryOfResearch] : null;
       this.categoryGuidanceEls.guidance.hidden = !url;
       if (url) {
-        this.categoryGuidanceEls.link.href = url;
+        this.categoryGuidanceEls.setUrl(url);
         this.categoryGuidanceEls.setSource(this.record, this.currentRole);
       }
     }

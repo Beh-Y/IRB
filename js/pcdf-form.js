@@ -238,7 +238,7 @@ class PcdfFormController {
       const url = this.currentRole === 'pi' && this.record.status === 'draft' ? pairAssistantUrlFor(this.record) : null;
       this.categoryGuidanceEls.guidance.hidden = !url;
       if (url) {
-        this.categoryGuidanceEls.link.href = url;
+        this.categoryGuidanceEls.setUrl(url);
         this.categoryGuidanceEls.setSource(this.record, this.currentRole);
       }
     }

@@ -164,23 +164,104 @@ function parsePairReply(text, labels) {
   return { matched, sections: result };
 }
 
+/* Matches a yes/no-style answer from Pair's reply against a field's actual
+ * valid options (e.g. ['Yes', 'No'] or ['Yes', 'N.A.']) -- requires an
+ * exact match after trimming and stripping trailing punctuation, case-
+ * insensitive. A hedge like "Probably yes" or "Yes, with conditions"
+ * deliberately does NOT match: better to leave the suggestion out entirely
+ * than guess at which way the PI should actually answer. */
+function normalizePairChoice(rawValue, validOptions) {
+  const cleaned = (rawValue || '').trim().replace(/[.!]+$/, '');
+  return validOptions.find((opt) => opt.toLowerCase() === cleaned.toLowerCase()) || null;
+}
+
+/* Builds/refreshes the inline "Pair suggests: <value>" note shown next to a
+ * suggest-mode field (see buildPairFillTargets) -- unlike a free-text
+ * field, pasting Pair's reply never changes a Yes/No-style field by itself;
+ * the PI has to click Apply themselves to actually set it, since that kind
+ * of answer drives what else the form requires and is meant to stay a
+ * deliberate PI decision, not something that silently changes underneath
+ * them. Re-render-safe: called fresh on every "Paste Pair's Reply" click,
+ * so pasting a second, different reply just replaces the still-unapplied
+ * suggestion rather than stacking another one next to it. */
+function renderPairSuggestion(suggestionEl, value, onApply) {
+  suggestionEl.innerHTML = '';
+  suggestionEl.hidden = false;
+
+  const text = document.createElement('span');
+  text.textContent = `Pair suggests: ${value}. `;
+  suggestionEl.appendChild(text);
+
+  const applyBtn = document.createElement('button');
+  applyBtn.type = 'button';
+  applyBtn.className = 'btn btn-link';
+  applyBtn.textContent = 'Apply';
+  applyBtn.addEventListener('click', () => {
+    onApply();
+    suggestionEl.hidden = true;
+  });
+  suggestionEl.appendChild(applyBtn);
+}
+
 /* Maps every pairPasteable field currently on the page to the label Pair's
  * reply is expected to use for it (field.pairLabel, falling back to the
- * field's own on-screen label when the two happen to match) and the live
- * input element + change-trigger to fill it -- the one thing
- * buildCategoryGuidanceBox's "Paste Pair's Reply" button needs to go from
- * parsed text to actually-updated fields. Only includes fields that are
- * actually rendered right now (controller.fieldEls[field.id] exists) and
- * editable (not read-only for the current viewer/status) -- same guard the
- * per-field "Paste from Pair" button already uses. */
+ * field's own on-screen label when the two happen to match) and how to
+ * apply a parsed value to it -- the one thing buildCategoryGuidanceBox's
+ * "Paste Pair's Reply" button needs to go from parsed text to actually-
+ * updated fields. Only includes fields that are actually rendered right now
+ * and editable (not read-only for the current viewer/status) -- same guard
+ * the per-field "Paste from Pair" button already uses.
+ *
+ * Two distinct modes, by field type:
+ * - 'fill' (text/textarea): apply(text) sets the field directly, same as
+ *   the per-field "Paste from Pair" button -- always succeeds.
+ * - 'suggest' (yesno/yesna/radio): apply(text) only succeeds if the parsed
+ *   text exactly matches one of the field's real options (see
+ *   normalizePairChoice); on success it shows a "Pair suggests: ..."  note
+ *   with its own Apply button (see renderPairSuggestion) rather than
+ *   setting the field itself.
+ * Both modes return true/false from apply() so the button's click handler
+ * can report which fields were actually filled, which were merely
+ * suggested, and which had an answer it couldn't make sense of. */
 function buildPairFillTargets(controller) {
   const targets = {};
   controller.fields.forEach((field) => {
     if (!field.pairPasteable) return;
     const els = controller.fieldEls[field.id];
-    if (!els || !els.input || els.input.disabled) return;
+    if (!els || !els.input) return;
     const label = field.pairLabel || field.label;
-    targets[label] = { inputEl: els.input, onChanged: () => controller.onFieldChanged(field) };
+
+    if (field.type === 'yesno' || field.type === 'yesna' || field.type === 'radio') {
+      const radios = Array.from(els.input.querySelectorAll('input[type="radio"]'));
+      if (radios.length === 0 || radios[0].disabled || !els.pairSuggestionEl) return;
+      const validOptions = radios.map((r) => r.value);
+      targets[label] = {
+        mode: 'suggest',
+        apply: (text) => {
+          const normalized = normalizePairChoice(text, validOptions);
+          if (!normalized) return false;
+          renderPairSuggestion(els.pairSuggestionEl, normalized, () => {
+            const match = radios.find((r) => r.value === normalized);
+            if (match) {
+              match.checked = true;
+              controller.onFieldChanged(field);
+            }
+          });
+          return true;
+        },
+      };
+      return;
+    }
+
+    if (els.input.disabled) return;
+    targets[label] = {
+      mode: 'fill',
+      apply: (text) => {
+        els.input.value = text;
+        controller.onFieldChanged(field);
+        return true;
+      },
+    };
   });
   return targets;
 }
@@ -287,13 +368,30 @@ function buildCategoryGuidanceBox() {
       return;
     }
 
+    const filled = [];
+    const suggested = [];
+    const unrecognizedValue = [];
+
     matched.forEach((label) => {
       const target = fillTargets[label];
       if (!target) return;
-      target.inputEl.value = sections[label];
-      target.onChanged();
+      const ok = target.apply(sections[label]);
+      if (!ok) {
+        unrecognizedValue.push(label);
+      } else if (target.mode === 'suggest') {
+        suggested.push(label);
+      } else {
+        filled.push(label);
+      }
     });
-    pasteReplyStatus.textContent = `Filled from Pair's reply: ${matched.join(', ')}.`;
+
+    const parts = [];
+    if (filled.length) parts.push(`Filled: ${filled.join(', ')}.`);
+    if (suggested.length) parts.push(`Suggested (review and click Apply below): ${suggested.join(', ')}.`);
+    if (unrecognizedValue.length) {
+      parts.push(`Couldn't make sense of the answer given for: ${unrecognizedValue.join(', ')}.`);
+    }
+    pasteReplyStatus.textContent = parts.join(' ');
     pasteReplyStatus.hidden = false;
   });
 

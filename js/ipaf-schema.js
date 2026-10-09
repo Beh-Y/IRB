@@ -68,6 +68,11 @@ const IPAF_SCHEMA = [
         label: 'Is the project an activity involving human subjects?',
         type: 'yesno',
         required: true,
+        pairPasteable: true,
+        // Matches IRPF's own label for the same question, so Pair's
+        // knowledge base only needs the one shared label regardless of
+        // which form the PI happens to be on.
+        pairLabel: 'Involves Human Subjects',
       },
       {
         id: 'involvesHumanSubjectsDetails',

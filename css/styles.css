@@ -807,6 +807,24 @@ body {
   margin-top: 0.35rem;
 }
 
+/* No explicit `display` here -- a <div> is block-level by default, and
+   setting one explicitly would have equal specificity to the browser's own
+   `[hidden] { display: none }` rule, so cascade order (ours loads after the
+   UA stylesheet) would make it win and silently defeat `.hidden = true`. */
+.pair-suggestion {
+  margin-top: 0.4rem;
+  padding: 0.3rem 0.5rem;
+  background: var(--color-info-bg);
+  color: var(--color-info-text);
+  border-radius: 4px;
+  font-size: 0.8rem;
+}
+
+.pair-suggestion .btn-link {
+  font-size: inherit;
+  font-weight: 600;
+}
+
 .btn-delete {
   color: var(--color-error-text);
   margin-left: 0.75rem;

@@ -481,8 +481,26 @@ class IrpfFormController {
     controlWrap.className = 'field-control';
     const input = this.buildControl(field, controlWrap);
 
+    let pairSuggestionEl = null;
     if (field.pairPasteable && input.tagName === 'TEXTAREA' && !input.disabled) {
       controlWrap.appendChild(buildPasteFromPairButton(input, () => this.onFieldChanged(field)));
+    } else if (field.pairPasteable && (field.type === 'yesno' || field.type === 'yesna' || field.type === 'radio')) {
+      const radios = Array.from(input.querySelectorAll('input[type="radio"]'));
+      if (radios.length > 0 && !radios[0].disabled) {
+        pairSuggestionEl = document.createElement('div');
+        pairSuggestionEl.className = 'pair-suggestion';
+        pairSuggestionEl.hidden = true;
+        controlWrap.appendChild(pairSuggestionEl);
+        // A suggestion the PI hasn't acted on yet shouldn't linger once
+        // they've answered the question themselves -- whether that's
+        // clicking Apply (handled in renderPairSuggestion) or just picking
+        // an option directly, same as always.
+        radios.forEach((radio) => {
+          radio.addEventListener('change', () => {
+            pairSuggestionEl.hidden = true;
+          });
+        });
+      }
     }
 
     const hintEl = document.createElement('div');
@@ -495,7 +513,7 @@ class IrpfFormController {
 
     row.appendChild(controlWrap);
 
-    this.fieldEls[field.id] = { row, input, hintEl, errorEl };
+    this.fieldEls[field.id] = { row, input, hintEl, errorEl, pairSuggestionEl };
     return row;
   }
 

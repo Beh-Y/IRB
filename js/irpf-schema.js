@@ -104,9 +104,21 @@ const IRPF_SCHEMA = [
     id: 'section1b',
     title: 'Section 1B – Nature of Research',
     fields: [
-      { id: 'involvesHumanSubjects', label: 'Involves Human Subjects', type: 'yesno', required: true },
-      { id: 'involvesBiologicalMaterials', label: 'Involves Biological Materials', type: 'yesno', required: true },
-      { id: 'involvesHealthInfo', label: 'Involves Health or Physiological Information', type: 'yesno', required: true },
+      { id: 'involvesHumanSubjects', label: 'Involves Human Subjects', type: 'yesno', required: true, pairPasteable: true },
+      {
+        id: 'involvesBiologicalMaterials',
+        label: 'Involves Biological Materials',
+        type: 'yesno',
+        required: true,
+        pairPasteable: true,
+      },
+      {
+        id: 'involvesHealthInfo',
+        label: 'Involves Health or Physiological Information',
+        type: 'yesno',
+        required: true,
+        pairPasteable: true,
+      },
     ],
   },
   {

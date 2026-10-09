@@ -545,6 +545,8 @@ function initIrpfPage() {
   const piCommentError = document.getElementById('pi-comment-error');
   const acknowledgePanel = document.getElementById('acknowledge-panel');
   const acknowledgeBtn = document.getElementById('btn-acknowledge');
+  const linkViewGuidelines = document.getElementById('link-view-guidelines');
+  const acknowledgeGuidelinesHint = document.getElementById('acknowledge-guidelines-hint');
   const underReviewActionPanel = document.getElementById('under-review-action-panel');
   const underReviewActionCommentInput = document.getElementById('under-review-action-comment');
   const underReviewActionError = document.getElementById('under-review-action-error');
@@ -929,6 +931,15 @@ function initIrpfPage() {
   approveExemptionBtn.addEventListener('click', () => handleCollateDecision((c) => controller.approveForExemption(c)));
   returnAmendmentsBtn.addEventListener('click', () => handleCollateDecision((c) => controller.returnForAmendments(c)));
   createIpafBtn.addEventListener('click', () => handleCollateDecision((c) => controller.decideToCreateIpaf(c)));
+
+  // The Acknowledge button starts disabled (see irpf.html) and only
+  // unlocks once the PI has actually opened the Guidelines -- it's a
+  // reminder of their responsibilities as PI, not just a formality to
+  // click past.
+  linkViewGuidelines.addEventListener('click', () => {
+    acknowledgeBtn.disabled = false;
+    acknowledgeGuidelinesHint.hidden = true;
+  });
 
   acknowledgeBtn.addEventListener('click', () => {
     controller.acknowledge();

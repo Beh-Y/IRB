@@ -115,6 +115,76 @@ function buildPasteFromPairButton(inputEl, onPasted) {
   return btn;
 }
 
+/* Parses a reply pasted back from Pair, formatted per the spec given to
+ * Pair's knowledge base: one or more sections, each starting with a
+ * recognized field label followed by a colon, with that field's content
+ * running until the next recognized label or the end of the text. Tolerant
+ * of minor formatting drift an LLM reply is liable to introduce despite the
+ * "plain text" instruction -- a leading '#'/'-'/'*'/'>' line-prefix, or the
+ * label itself wrapped in '**'/'__' -- but still requires the label to be
+ * the first thing on its line; a label mentioned in passing mid-sentence
+ * doesn't count, so there's no ambiguity about where a section starts.
+ * `labels` is the list of labels valid for the CURRENT page only (whatever
+ * this record's pairPasteable fields are) -- a label for a field that
+ * isn't on this form is just ordinary text as far as this parser is
+ * concerned, same as any other unrecognized line. Returns
+ * { matched: [label, ...], sections: { [label]: text } }. */
+function parsePairReply(text, labels) {
+  // Longest first, so e.g. a hypothetical "Methodology Notes" label (were
+  // one ever added) can't get shadowed by a shorter "Methodology" match on
+  // the same line.
+  const sortedLabels = [...labels].sort((a, b) => b.length - a.length);
+  const lines = (text || '').split(/\r?\n/);
+  const sections = {};
+  const matched = [];
+  let current = null;
+
+  lines.forEach((line) => {
+    const cleaned = line
+      .trim()
+      .replace(/^[#>*\-\s]+/, '')
+      .replace(/\*\*/g, '')
+      .replace(/__/g, '');
+    const hitLabel = sortedLabels.find((label) => cleaned.toLowerCase().startsWith(`${label.toLowerCase()}:`));
+
+    if (hitLabel) {
+      current = hitLabel;
+      if (!matched.includes(hitLabel)) matched.push(hitLabel);
+      const rest = cleaned.slice(hitLabel.length + 1).trim();
+      sections[hitLabel] = rest ? [rest] : [];
+    } else if (current) {
+      sections[current].push(line);
+    }
+  });
+
+  const result = {};
+  matched.forEach((label) => {
+    result[label] = sections[label].join('\n').trim();
+  });
+  return { matched, sections: result };
+}
+
+/* Maps every pairPasteable field currently on the page to the label Pair's
+ * reply is expected to use for it (field.pairLabel, falling back to the
+ * field's own on-screen label when the two happen to match) and the live
+ * input element + change-trigger to fill it -- the one thing
+ * buildCategoryGuidanceBox's "Paste Pair's Reply" button needs to go from
+ * parsed text to actually-updated fields. Only includes fields that are
+ * actually rendered right now (controller.fieldEls[field.id] exists) and
+ * editable (not read-only for the current viewer/status) -- same guard the
+ * per-field "Paste from Pair" button already uses. */
+function buildPairFillTargets(controller) {
+  const targets = {};
+  controller.fields.forEach((field) => {
+    if (!field.pairPasteable) return;
+    const els = controller.fieldEls[field.id];
+    if (!els || !els.input || els.input.disabled) return;
+    const label = field.pairLabel || field.label;
+    targets[label] = { inputEl: els.input, onChanged: () => controller.onFieldChanged(field) };
+  });
+  return targets;
+}
+
 // The guidance description + link, shared verbatim across all three forms
 // so they never drift. Kept category-agnostic in its wording -- IRPF/IPAF
 // tailor the actual link by Category of Research (see
@@ -175,8 +245,57 @@ function buildCategoryGuidanceBox() {
   fallbackText.hidden = true;
   guidance.appendChild(fallbackText);
 
+  // The other direction: once Pair's assistants have been given the
+  // labeled-output format (see parsePairReply above and the knowledge-base
+  // spec it matches), this reads the reply back off the clipboard and
+  // drops each recognized section straight into its field -- one paste
+  // instead of one per field. Hidden entirely when there's nothing on this
+  // page it could fill (see setFillTargets below), so it never shows up as
+  // a dead end on a page/role with no pairPasteable fields to target.
+  const pasteReplyBtn = document.createElement('button');
+  pasteReplyBtn.type = 'button';
+  pasteReplyBtn.className = 'btn btn-secondary';
+  pasteReplyBtn.textContent = "Paste Pair's Reply";
+  pasteReplyBtn.hidden = true;
+  actions.appendChild(pasteReplyBtn);
+
+  const pasteReplyStatus = document.createElement('div');
+  pasteReplyStatus.className = 'field-hint';
+  pasteReplyStatus.hidden = true;
+  guidance.appendChild(pasteReplyStatus);
+
   let source = null;
   let url = null;
+  let fillTargets = {};
+
+  pasteReplyBtn.addEventListener('click', async () => {
+    let text;
+    try {
+      text = await navigator.clipboard.readText();
+    } catch (err) {
+      pasteReplyStatus.textContent =
+        "Couldn't read the clipboard automatically -- copy Pair's reply, then paste it directly into the field(s) below instead.";
+      pasteReplyStatus.hidden = false;
+      return;
+    }
+
+    const { matched, sections } = parsePairReply(text, Object.keys(fillTargets));
+    if (matched.length === 0) {
+      pasteReplyStatus.textContent =
+        "Couldn't find any recognized field labels in the pasted text -- make sure Pair's reply follows the format it was given, then try again.";
+      pasteReplyStatus.hidden = false;
+      return;
+    }
+
+    matched.forEach((label) => {
+      const target = fillTargets[label];
+      if (!target) return;
+      target.inputEl.value = sections[label];
+      target.onChanged();
+    });
+    pasteReplyStatus.textContent = `Filled from Pair's reply: ${matched.join(', ')}.`;
+    pasteReplyStatus.hidden = false;
+  });
 
   openBtn.addEventListener('click', () => {
     if (!url) return;
@@ -223,6 +342,15 @@ function buildCategoryGuidanceBox() {
     setSource: (record, role) => {
       source = { record, role };
     },
+    // Called on every refreshAll() (see buildPairFillTargets above), so the
+    // set of fillable fields -- and the button's own visibility -- stays
+    // current as conditional fields show/hide while the PI answers other
+    // questions (e.g. Methodology only appears once a Section 1B question
+    // is Yes).
+    setFillTargets: (targets) => {
+      fillTargets = targets || {};
+      pasteReplyBtn.hidden = Object.keys(fillTargets).length === 0;
+    },
   };
 }
 
@@ -231,7 +359,7 @@ function buildCategoryGuidanceBox() {
 // Research on the IRPF, in Project Details on the IPAF) only appears while
 // first drafting, so this is where the PI sees it while actually responding
 // to feedback, without needing to scroll into the form to find it again.
-function renderPiCategoryGuidancePanel(record, role) {
+function renderPiCategoryGuidancePanel(record, role, controller) {
   const container = document.getElementById('pi-category-guidance-panel');
   if (!container) return;
   container.innerHTML = '';
@@ -242,9 +370,14 @@ function renderPiCategoryGuidancePanel(record, role) {
     return;
   }
 
-  const { guidance, setUrl, setSource } = buildCategoryGuidanceBox();
+  const { guidance, setUrl, setSource, setFillTargets } = buildCategoryGuidanceBox();
   setUrl(url);
   setSource(record, role);
+  // The form (and its fieldEls) is already mounted by the time this runs
+  // (see each page.js's init function), so every pairPasteable field is
+  // available to target here, not just whichever one this box happens to
+  // sit physically next to in the DOM.
+  setFillTargets(buildPairFillTargets(controller));
   guidance.hidden = false;
   container.appendChild(guidance);
   container.hidden = false;

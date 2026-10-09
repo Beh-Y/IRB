@@ -426,7 +426,7 @@ function initIpafPage() {
   renderActivityLog(record, role);
   renderDirectorCommentsPanel(controller);
   renderCommentsPanel(controller);
-  renderPiCategoryGuidancePanel(record, role);
+  renderPiCategoryGuidancePanel(record, role, controller);
   renderVotingSummary(controller);
   renderLeadershipSummary(controller);
   renderRouteCheckboxes('triage-route-checkboxes', record.assignedMembers);

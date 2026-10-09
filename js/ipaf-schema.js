@@ -77,6 +77,10 @@ const IPAF_SCHEMA = [
         visibleIf: (d) => d.involvesHumanSubjects === 'Yes',
         requiredIf: (d) => d.involvesHumanSubjects === 'Yes',
         pairPasteable: true,
+        // The on-screen label ("Please elaborate") is too generic to use as
+        // a recognized section header in Pair's reply -- this is the label
+        // given to Pair's knowledge base instead (see parsePairReply).
+        pairLabel: 'Human Subjects Elaboration',
       },
       {
         id: 'projectTypes',

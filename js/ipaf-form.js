@@ -975,6 +975,7 @@ class IpafFormController {
       if (url) {
         this.categoryGuidanceEls.setUrl(url);
         this.categoryGuidanceEls.setSource(this.record, this.currentRole);
+        this.categoryGuidanceEls.setFillTargets(buildPairFillTargets(this));
       }
     }
   }
